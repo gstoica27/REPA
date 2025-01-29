@@ -305,10 +305,11 @@ def main(args):
 
             with accelerator.accumulate(model):
                 model_kwargs = dict(y=labels)
-                loss, proj_loss = loss_fn(model, x, model_kwargs, zs=zs)
+                loss, proj_loss, struct_loss = loss_fn(model, x, model_kwargs, zs=zs)
                 loss_mean = loss.mean()
                 proj_loss_mean = proj_loss.mean()
-                loss = loss_mean + proj_loss_mean * args.proj_coeff
+                struct_loss_mean = struct_loss.mean()
+                loss = loss_mean + proj_loss_mean * args.proj_coeff + struct_loss_mean * args.struct_coeff
                     
                 ## optimization
                 accelerator.backward(loss)
@@ -365,6 +366,7 @@ def main(args):
             logs = {
                 "loss": accelerator.gather(loss_mean).mean().detach().item(), 
                 "proj_loss": accelerator.gather(proj_loss_mean).mean().detach().item(),
+                "struct_loss": accelerator.gather(struct_loss_mean).mean().detach().item(),
                 "grad_norm": accelerator.gather(grad_norm).mean().detach().item()
             }
             progress_bar.set_postfix(**logs)
@@ -434,6 +436,7 @@ def parse_args(input_args=None):
     parser.add_argument("--cfg-prob", type=float, default=0.1)
     parser.add_argument("--enc-type", type=str, default='dinov2-vit-b')
     parser.add_argument("--proj-coeff", type=float, default=0.5)
+    parser.add_argument("--struct-coeff", type=float, default=0.0)
     parser.add_argument("--weighting", default="uniform", type=str, help="Max gradient norm.")
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False)
 
@@ -446,5 +449,5 @@ def parse_args(input_args=None):
 
 if __name__ == "__main__":
     args = parse_args()
-    
+    print("The args are: ", args)
     main(args)
