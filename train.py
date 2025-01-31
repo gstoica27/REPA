@@ -134,7 +134,12 @@ def main(args):
     if accelerator.is_main_process:
         os.makedirs(args.output_dir, exist_ok=True)  # Make results folder (holds all experiment subfolders)
         save_dir = os.path.join(args.output_dir, args.exp_name)
+        # Add structure stuff
+        if args.struct_method is not None or args.struct_coeff > 0:
+            save_dir = os.path.join(save_dir, f"{args.struct_method}-structCoeff_{args.struct_coeff}")
+        
         os.makedirs(save_dir, exist_ok=True)
+        print("Saving to: ", save_dir)
         args_dict = vars(args)
         # Save to a JSON file
         json_dir = os.path.join(save_dir, "args.json")
@@ -191,7 +196,9 @@ def main(args):
         accelerator=accelerator,
         latents_scale=latents_scale,
         latents_bias=latents_bias,
-        weighting=args.weighting
+        weighting=args.weighting,
+        struct_method=args.struct_method
+        
     )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -436,10 +443,13 @@ def parse_args(input_args=None):
     parser.add_argument("--cfg-prob", type=float, default=0.1)
     parser.add_argument("--enc-type", type=str, default='dinov2-vit-b')
     parser.add_argument("--proj-coeff", type=float, default=0.5)
-    parser.add_argument("--struct-coeff", type=float, default=0.0)
     parser.add_argument("--weighting", default="uniform", type=str, help="Max gradient norm.")
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False)
-
+    
+    # Structure Loss
+    parser.add_argument("--struct-coeff", type=float, default=0.0)
+    parser.add_argument('--struct-method', type=str, default=None, choices=[None, "between_images", "between_tokens"])
+    
     if input_args is not None:
         args = parser.parse_args(input_args)
     else:

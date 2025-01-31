@@ -54,20 +54,22 @@ def compute_cka(feats):
     # return F.relu(AB / (AA.sqrt() * BB.sqrt()))
     return AB / (AA.sqrt() * BB.sqrt())
 
-def compute_gram_matrix(X, tokens_are_examples=False):
+def compute_gram_matrix(X, method='between_images'):
     """
     Compute the Gram matrix of a set of features.
     """
     assert len(X.shape) == 3, "Input must be of shape [batch, tokens, features]. It currently has shape: {}".format(X.shape)
     
-    if tokens_are_examples:
-        Y = X.flatten(0, 1)
+    if method == 'between_images':
+        Y = X.flatten(1, 2)                     # [B,TxE]
+        gram = torch.mm(Y, Y.T)[None]           # [B,B] -> [1,B,B]
+    elif method == 'between_tokens':
+        gram = torch.bmm(X, X.transpose(1, 2))  # [B,T,E]x[B,E,T] -> [B,T,T]
     else:
-        Y = X.flatten(1, 2)
-    # compute gram matrix
-    gram = Y @ Y.T
+        raise NotImplementedError("Method {} not implemented.".format(method))
     # fill in diagonals with 0
-    gram.fill_diagonal_(0)
+    # gram.fill_diagonal_(0)
+    gram[:, torch.arange(gram.shape[1]), torch.arange(gram.shape[2])] = 0
     return gram
 
 def compute_hsic(A, B):
@@ -78,22 +80,54 @@ def compute_hsic(A, B):
     A_red = A.sum() # [L1,1]
     B_red = B.sum() # [L2,1]
     hsic_AB += ((A_red * B_red) / ((N - 1) * (N - 2)))
-    
+
     oneA = A.sum(dim=0) 
     Bone = B.sum(dim=-1)
     oneABone = torch.dot(oneA, Bone)
     hsic_AB -= ((oneABone * 2 / (N - 2)))
     return (1 / (N * (N - 3)) * hsic_AB).to(torch.float32)
 
+def compute_batched_hsic(A, B):
+    """
+    Compute the Hilbert-Schmidt Independence Criterion (HSIC) between two sets of features.
+    Assume A,B are both of shape [*,L1,L1]
+    """
+    N = A.shape[1]
+    A = A.to(torch.float64)
+    B = B.to(torch.float64)
+    # hsic_AB = torch.dot(A.flatten(), B.flatten())
+    hsic_AB = (A * B).sum((1,2)) # [*,L1,L1] -> [*,1]
+    A_red = A.sum((1,2)) # [*,1]
+    B_red = B.sum((1,2)) # [*,1]
+    hsic_AB += ((A_red * B_red) / ((N - 1) * (N - 2)))
+    oneA = A.sum(dim=1) 
+    Bone = B.sum(dim=2)
+    # oneABone = torch.dot(oneA, Bone)
+    oneABone = (oneA * Bone).sum(1)
+    hsic_AB -= ((oneABone * 2 / (N - 2)))
+    return (1 / (N * (N - 3)) * hsic_AB).to(torch.float32)
+
+def check_for_correct_hsic(A, B):
+    Y = [compute_hsic(A[i], B[i]) for i in range(A.shape[0])]
+    Y = torch.tensor(Y, device=Y[0].device)
+    return Y
+    
 def compute_pairwise_cka(A, B):
-    AB = compute_hsic(A, B)
-    AA = compute_hsic(A, A)
-    BB = compute_hsic(B, B)
+    AB = compute_batched_hsic(A, B)
+    AA = compute_batched_hsic(A, A)
+    BB = compute_batched_hsic(B, B)
+    # # Check for correctness
+    # AB_ = check_for_correct_hsic(A, B)
+    # AA_ = check_for_correct_hsic(A, A)
+    # BB_ = check_for_correct_hsic(B, B)
+    # if not torch.allclose(AB, AB_) or not torch.allclose(AA, AA_) or not torch.allclose(BB, BB_):
+    #     print("HSIC computation error")
+    
     cka = AB / (AA.sqrt() * BB.sqrt())
     return cka
 
 def compute_cka_loss(cka):
-    return 1 - F.relu(cka)
+    return (1 - F.relu(cka)).mean()
 
 class SILoss:
     def __init__(
@@ -105,6 +139,7 @@ class SILoss:
             accelerator=None, 
             latents_scale=None, 
             latents_bias=None,
+            struct_method=None
             ):
         self.prediction = prediction
         self.weighting = weighting
@@ -113,6 +148,7 @@ class SILoss:
         self.accelerator = accelerator
         self.latents_scale = latents_scale
         self.latents_bias = latents_bias
+        self.struct_method = struct_method
 
     def interpolant(self, t):
         if self.path_type == "linear":
@@ -170,23 +206,15 @@ class SILoss:
         # CKA loss
         struct_loss = 0
         for i, (z, z_tilde) in enumerate(zip(zs, zs_tilde)):
-            z_gram = compute_gram_matrix(z)
-            z_tilde_gram = compute_gram_matrix(z_tilde)
+            z_gram = compute_gram_matrix(z, method=self.struct_method)
+            z_tilde_gram = compute_gram_matrix(z_tilde, method=self.struct_method)
             cka = compute_pairwise_cka(z_gram, z_tilde_gram)
             cka_loss = compute_cka_loss(cka)
             struct_loss += cka_loss
             # sanity checking cka computation
-            cka_ref = compute_cka([z_gram, z_tilde_gram])[0, -1]
-            if not torch.isclose(cka, cka_ref, atol=1e-5):
-                print("CKA computation error")
-                print(cka.item(), cka_ref.item())
-        struct_loss /= len(zs)
-        # print("Looking at shapes")
-        # print(len(zs), len(zs_tilde))
-        # print(zs[0].shape, zs_tilde[0].shape)
-        # import pdb; pdb.set_trace()
-        # X = compute_gram_matrix(zs[0])
-        # Y = compute_gram_matrix(zs_tilde[0])
-        # cka_simpler = compute_pairwise_cka(X, Y)
-        # cka_og = compute_cka([X, Y])
+            # cka_ref = compute_cka([z_gram, z_tilde_gram])[0, -1]
+            # if not torch.isclose(cka, cka_ref, atol=1e-5):
+            #     print("CKA computation error")
+            #     print(cka.item(), cka_ref.item())
+        struct_loss /= (len(zs))
         return denoising_loss, proj_loss, struct_loss
