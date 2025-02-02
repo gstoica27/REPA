@@ -36,7 +36,13 @@ logger = get_logger(__name__)
 with open('/weka/prior-default/georges/keys/wandb.txt', 'r') as f:
     wandb_key = f.readlines()[0].strip()
 wandb.login(key=wandb_key) # login to wandb
-os.makedirs('/root/.cache/torch/hub/facebookresearch_dinov2_main', exist_ok=True)
+if not os.path.exists('/root/.cache/torch/hub/facebookresearch_dinov2_main'):
+    from distutils.dir_util import copy_tree
+    copy_tree(
+        '/weka/prior-default/georges/redundancies/facebookresearch_dinov2_main', 
+        '/root/.cache/torch/hub/facebookresearch_dinov2_main'
+    )
+# os.makedirs('/root/.cache/torch/hub/facebookresearch_dinov2_main', exist_ok=True)
 
 CLIP_DEFAULT_MEAN = (0.48145466, 0.4578275, 0.40821073)
 CLIP_DEFAULT_STD = (0.26862954, 0.26130258, 0.27577711)
