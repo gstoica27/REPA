@@ -28,7 +28,7 @@ dependencies:
       - certifi==2024.12.14
       - charset-normalizer==3.4.1
       - click==8.1.8
-      - clip==1.0
+      # - clip==1.0
       - diffusers==0.32.2
       - docker-pycreds==0.4.0
       - einops==0.8.0
