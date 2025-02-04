@@ -131,6 +131,7 @@ def create_experiment_name(args):
     e.g., structPIBT-linear-sitb-dinov2-b-enc4
     """
     exp_name = ""
+    offset = ""
     # Add structure to name
     if args.struct_coeff > 0:
         assert args.struct_method is not None
@@ -146,14 +147,16 @@ def create_experiment_name(args):
         coeff_str = str(args.struct_coeff).replace('.', 'p')    
         struct_name += f"-{coeff_str}"
         exp_name += struct_name
+        offset = "-"
     # Add REPA to name
     if args.proj_coeff > 0:
         path_name = str(args.path_type).capitalize()
         coeff_str = str(args.proj_coeff).replace('.', 'p')
-        exp_name += f"-repa{path_name}-{coeff_str}"
+        exp_name += offset + f"repa{path_name}-{coeff_str}"
+        offset = "-"
     # Add model to name. E.g., SiT-B/2 -> sitb2
     model_name = args.model.replace('/', '-').lower().replace('-', '')
-    exp_name += f"-{model_name}"
+    exp_name += offset + f"{model_name}"
     # Add teacher to name. e.g., dinov2-vit-b -> dinov2VitB
     teacher_name = "".join([comp.capitalize() if i > 0 else comp for i, comp in enumerate(args.enc_type.split('-'))])
     exp_name += f"-{teacher_name}"
@@ -515,7 +518,6 @@ if __name__ == "__main__":
     print("The args are: ", args)
     exp_name = create_experiment_name(args)
     print("The experiment name is: ", exp_name)
-    exit()
     try:
         main(args, exp_name)
     except:
