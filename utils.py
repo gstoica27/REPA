@@ -8,6 +8,34 @@ import math
 import warnings
 
 
+def find_experiment_checkpoint_paths(root_dir, experiment_dir):
+    """
+    Finds all the checkpoint paths in the experiment directory.
+    """
+    checkpoint_paths = []
+    check_dir = os.path.join(root_dir, experiment_dir)
+    if 'checkpoints' in os.listdir(check_dir):
+        checkpoints = os.listdir(os.path.join(check_dir, 'checkpoints'))
+        if len(checkpoints) == 0:
+            return []
+        last_step = max([float(os.path.splitext(i)[0]) for i in checkpoints])
+        if last_step < 400000:
+            return []
+        return [experiment_dir]
+    for sub_dir in os.listdir(check_dir):
+        new_dir = os.path.join(experiment_dir, sub_dir)
+        checkpoint_paths.extend(find_experiment_checkpoint_paths(root_dir, new_dir))
+    
+    return checkpoint_paths
+
+def convert_pylist_to_shlist(pylist):
+    """
+    Converts a Python list to a shell list.
+    """
+    # shlist = ' '.join(pylist)
+    # return shlist
+    return str(pylist).replace('[', '(').replace(']', ')').replace("'", '"').replace('exps/', '')
+
 # code from SiT repository
 pretrained_models = {'last.pt'}
 

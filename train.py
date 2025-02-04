@@ -1,3 +1,4 @@
+import pdb
 import argparse
 import copy
 from copy import deepcopy
@@ -124,11 +125,51 @@ def requires_grad(model, flag=True):
         p.requires_grad = flag
 
 
+def create_experiment_name(args):
+    """
+    Create a unique experiment name based on the hyperparameters.
+    e.g., structPIBT-linear-sitb-dinov2-b-enc4
+    """
+    exp_name = ""
+    # Add structure to name
+    if args.struct_coeff > 0:
+        assert args.struct_method is not None
+        if args.struct_method == 'between_images':
+            struct_name = 'structImg'
+        elif args.struct_method == 'between_tokens':
+            struct_name = 'structTok'
+        elif args.struct_method == 'between_images_per_token':
+            struct_name = 'structImgByTok'
+        else:
+            raise NotImplementedError()
+        
+        coeff_str = str(args.struct_coeff).replace('.', 'p')    
+        struct_name += f"-{coeff_str}"
+        exp_name += struct_name
+    # Add REPA to name
+    if args.proj_coeff > 0:
+        path_name = str(args.path_type).capitalize()
+        coeff_str = str(args.proj_coeff).replace('.', 'p')
+        exp_name += f"-repa{path_name}-{coeff_str}"
+    # Add model to name. E.g., SiT-B/2 -> sitb2
+    model_name = args.model.replace('/', '-').lower().replace('-', '')
+    exp_name += f"-{model_name}"
+    # Add teacher to name. e.g., dinov2-vit-b -> dinov2VitB
+    teacher_name = "".join([comp.capitalize() if i > 0 else comp for i, comp in enumerate(args.enc_type.split('-'))])
+    exp_name += f"-{teacher_name}"
+    # Add encoder depth to name
+    exp_name += f"-enc{args.encoder_depth}"
+    # Add batch size to name
+    exp_name += f"-bs{args.batch_size}"
+    print(exp_name)
+    return exp_name
+
+
 #################################################################################
 #                                  Training Loop                                #
 #################################################################################
 
-def main(args):    
+def main(args, exp_name):    
     # set accelerator
     logging_dir = Path(args.output_dir, args.logging_dir)
     accelerator_project_config = ProjectConfiguration(
@@ -144,10 +185,10 @@ def main(args):
 
     if accelerator.is_main_process:
         os.makedirs(args.output_dir, exist_ok=True)  # Make results folder (holds all experiment subfolders)
-        save_dir = os.path.join(args.output_dir, args.exp_name)
+        save_dir = os.path.join(args.output_dir, exp_name)
         # Add structure stuff
-        if args.struct_method is not None or args.struct_coeff > 0:
-            save_dir = os.path.join(save_dir, f"{args.struct_method}-structCoeff_{args.struct_coeff}")
+        # if args.struct_method is not None or args.struct_coeff > 0:
+        #     save_dir = os.path.join(save_dir, f"{args.struct_method}-structCoeff_{args.struct_coeff}")
         
         os.makedirs(save_dir, exist_ok=True)
         print("Saving to: ", save_dir)
@@ -251,7 +292,7 @@ def main(args):
     if args.resume_step > 0:
         ckpt_name = str(args.resume_step).zfill(7) +'.pt'
         ckpt = torch.load(
-            f'{os.path.join(args.output_dir, args.exp_name)}/checkpoints/{ckpt_name}',
+            f'{os.path.join(args.output_dir, exp_name)}/checkpoints/{ckpt_name}',
             map_location='cpu',
             )
         model.load_state_dict(ckpt['model'])
@@ -269,7 +310,7 @@ def main(args):
             project_name="REPA", 
             config=tracker_config,
             init_kwargs={
-                "wandb": {"name": f"{args.exp_name}"}
+                "wandb": {"name": f"{exp_name}"}
             },
         )
         
@@ -403,12 +444,13 @@ def main(args):
         logger.info("Done!")
     accelerator.end_training()
 
+
 def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description="Training")
 
     # logging:
     parser.add_argument("--output-dir", type=str, default="exps")
-    parser.add_argument("--exp-name", type=str, required=True)
+    # parser.add_argument("--exp-name", type=str, required=True)
     parser.add_argument("--logging-dir", type=str, default="logs")
     parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--sampling-steps", type=int, default=10000)
@@ -459,7 +501,7 @@ def parse_args(input_args=None):
     
     # Structure Loss
     parser.add_argument("--struct-coeff", type=float, default=0.0)
-    parser.add_argument('--struct-method', type=str, default=None, choices=[None, "between_images", "between_tokens"])
+    parser.add_argument('--struct-method', type=str, default=None, choices=[None, "between_images", "between_tokens", "between_images_per_token"])
     
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -471,8 +513,11 @@ def parse_args(input_args=None):
 if __name__ == "__main__":
     args = parse_args()
     print("The args are: ", args)
+    exp_name = create_experiment_name(args)
+    print("The experiment name is: ", exp_name)
+    exit()
     try:
-        main(args)
+        main(args, exp_name)
     except:
         print("Retrying....")
-        main(args)
+        main(args, exp_name)

@@ -65,6 +65,9 @@ def compute_gram_matrix(X, method='between_images'):
         gram = torch.mm(Y, Y.T)[None]           # [B,B] -> [1,B,B]
     elif method == 'between_tokens':
         gram = torch.bmm(X, X.transpose(1, 2))  # [B,T,E]x[B,E,T] -> [B,T,T]
+    elif method == 'between_images_per_token':
+        Y = X.transpose(0, 1)                   # [B,T,E] -> [T,B,E]
+        gram = torch.bmm(Y, Y.transpose(1, 2))  # [T,B,E]x[T,E,B] -> [T,B,B]
     else:
         raise NotImplementedError("Method {} not implemented.".format(method))
     # fill in diagonals with 0
