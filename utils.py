@@ -34,7 +34,7 @@ def convert_pylist_to_shlist(pylist):
     """
     # shlist = ' '.join(pylist)
     # return shlist
-    return str(pylist).replace('[', '(').replace(']', ')').replace("'", '"').replace('exps/', '')
+    return str(pylist).replace('[', '').replace(']', '').replace("'", '"').replace('exps/', '').replace(',', '')
 
 # code from SiT repository
 pretrained_models = {'last.pt'}

@@ -144,8 +144,12 @@ def create_experiment_name(args):
         else:
             raise NotImplementedError()
         
+        if not args.struct_add_relu:
+            struct_name += "-noRelu"
+        
         coeff_str = str(args.struct_coeff).replace('.', 'p')    
         struct_name += f"-{coeff_str}"
+        
         exp_name += struct_name
         offset = "-"
     # Add REPA to name
@@ -252,7 +256,8 @@ def main(args, exp_name):
         latents_scale=latents_scale,
         latents_bias=latents_bias,
         weighting=args.weighting,
-        struct_method=args.struct_method
+        struct_method=args.struct_method,
+        struct_add_relu=args.struct_add_relu,
         
     )
     if accelerator.is_main_process:
@@ -505,6 +510,7 @@ def parse_args(input_args=None):
     # Structure Loss
     parser.add_argument("--struct-coeff", type=float, default=0.0)
     parser.add_argument('--struct-method', type=str, default=None, choices=[None, "between_images", "between_tokens", "between_images_per_token"])
+    parser.add_argument('--struct-add-relu', action=argparse.BooleanOptionalAction, default=True)
     
     if input_args is not None:
         args = parser.parse_args(input_args)

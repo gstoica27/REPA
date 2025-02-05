@@ -1,7 +1,7 @@
 #!/bin/bash
 MODEL_NAME="SiT-B/2"
 # Compute this list using the utils find_experiment_paths -> convert_pylist_to_shlist functions! 
-for exp_name in "structCoeff05-linear-sitb-dinov2-b-enc4-batchsize1024/between_images-structCoeff_0.5"
+for exp_name in "structImg-noRelu-0p5-repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256"
 do
     EXP_LOC="exps/${exp_name}"
     SAVE_DIR="samples/${exp_name}"

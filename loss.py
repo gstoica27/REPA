@@ -99,6 +99,7 @@ def compute_batched_hsic(A, B):
     A = A.to(torch.float64)
     B = B.to(torch.float64)
     # hsic_AB = torch.dot(A.flatten(), B.flatten())
+    # hsic_AB_ = torch.diagonal(torch.bmm(A, B), dim1=-2, dim2=-1).sum(-1)
     hsic_AB = (A * B).sum((1,2)) # [*,L1,L1] -> [*,1]
     A_red = A.sum((1,2)) # [*,1]
     B_red = B.sum((1,2)) # [*,1]
@@ -119,7 +120,7 @@ def compute_pairwise_cka(A, B):
     AB = compute_batched_hsic(A, B)
     AA = compute_batched_hsic(A, A)
     BB = compute_batched_hsic(B, B)
-    # # Check for correctness
+    # # # Check for correctness
     # AB_ = check_for_correct_hsic(A, B)
     # AA_ = check_for_correct_hsic(A, A)
     # BB_ = check_for_correct_hsic(B, B)
@@ -129,8 +130,10 @@ def compute_pairwise_cka(A, B):
     cka = AB / (AA.sqrt() * BB.sqrt())
     return cka
 
-def compute_cka_loss(cka):
-    return (1 - F.relu(cka)).mean()
+def compute_cka_loss(cka, add_relu=True):
+    if add_relu:
+        cka = F.relu(cka)
+    return (1 - cka).mean()
 
 class SILoss:
     def __init__(
@@ -142,7 +145,8 @@ class SILoss:
             accelerator=None, 
             latents_scale=None, 
             latents_bias=None,
-            struct_method=None
+            struct_method=None,
+            struct_add_relu=True,
             ):
         self.prediction = prediction
         self.weighting = weighting
@@ -152,6 +156,7 @@ class SILoss:
         self.latents_scale = latents_scale
         self.latents_bias = latents_bias
         self.struct_method = struct_method
+        self.struct_add_relu = struct_add_relu
 
     def interpolant(self, t):
         if self.path_type == "linear":
@@ -212,7 +217,7 @@ class SILoss:
             z_gram = compute_gram_matrix(z, method=self.struct_method)
             z_tilde_gram = compute_gram_matrix(z_tilde, method=self.struct_method)
             cka = compute_pairwise_cka(z_gram, z_tilde_gram)
-            cka_loss = compute_cka_loss(cka)
+            cka_loss = compute_cka_loss(cka, self.struct_add_relu)
             struct_loss += cka_loss
             # sanity checking cka computation
             # cka_ref = compute_cka([z_gram, z_tilde_gram])[0, -1]
