@@ -173,6 +173,17 @@ class SILoss:
             raise NotImplementedError()
 
         return alpha_t, sigma_t, d_alpha_t, d_sigma_t
+    
+    def compute_structure_loss(self, pve_latents, diffusion_latents):
+        loss = 0
+        # pdb.set_trace()
+        for i, (pve_layer_latents, diffusion_layer_latents) in enumerate(zip(pve_latents, diffusion_latents)):
+            pve_gram = compute_gram_matrix(pve_layer_latents, method=self.struct_method)
+            diffusion_gram = compute_gram_matrix(diffusion_layer_latents, method=self.struct_method)
+            cka = compute_pairwise_cka(diffusion_gram, pve_gram)
+            cka_loss = compute_cka_loss(cka, self.struct_add_relu)
+            loss += cka_loss
+        return loss / len(pve_latents)
 
     def __call__(self, model, images, model_kwargs=None, zs=None):
         if model_kwargs == None:
@@ -199,7 +210,7 @@ class SILoss:
             model_target = d_alpha_t * images + d_sigma_t * noises
         else:
             raise NotImplementedError() # TODO: add x or eps prediction
-        model_output, zs_tilde  = model(model_input, time_input.flatten(), **model_kwargs)
+        model_output, zs_tilde, hs_tilde  = model(model_input, time_input.flatten(), **model_kwargs)
         denoising_loss = mean_flat((model_output - model_target) ** 2)
 
         # projection loss
@@ -212,17 +223,7 @@ class SILoss:
                 proj_loss += mean_flat(-(z_j * z_tilde_j).sum(dim=-1))
         proj_loss /= (len(zs) * bsz)
         # CKA loss
-        struct_loss = 0
-        for i, (z, z_tilde) in enumerate(zip(zs, zs_tilde)):
-            z_gram = compute_gram_matrix(z, method=self.struct_method)
-            z_tilde_gram = compute_gram_matrix(z_tilde, method=self.struct_method)
-            cka = compute_pairwise_cka(z_gram, z_tilde_gram)
-            cka_loss = compute_cka_loss(cka, self.struct_add_relu)
-            struct_loss += cka_loss
-            # sanity checking cka computation
-            # cka_ref = compute_cka([z_gram, z_tilde_gram])[0, -1]
-            # if not torch.isclose(cka, cka_ref, atol=1e-5):
-            #     print("CKA computation error")
-            #     print(cka.item(), cka_ref.item())
-        struct_loss /= (len(zs))
+        struct_loss = self.compute_structure_loss(
+            pve_latents=zs, diffusion_latents=hs_tilde
+        )
         return denoising_loss, proj_loss, struct_loss

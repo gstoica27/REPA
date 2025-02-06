@@ -6,6 +6,7 @@
 # MAE: https://github.com/facebookresearch/mae/blob/main/models_mae.py
 # --------------------------------------------------------
 
+import pdb
 import torch
 import torch.nn as nn
 import numpy as np
@@ -208,6 +209,8 @@ class SiT(nn.Module):
             ])
         self.final_layer = FinalLayer(decoder_hidden_size, patch_size, self.out_channels)
         self.initialize_weights()
+        # Add identity module for structure loss
+        self.struct_identity = nn.Identity()
 
     def initialize_weights(self):
         # Initialize transformer layers:
@@ -281,10 +284,12 @@ class SiT(nn.Module):
             x = block(x, c)                      # (N, T, D)
             if (i + 1) == self.encoder_depth:
                 zs = [projector(x.reshape(-1, D)).reshape(N, T, -1) for projector in self.projectors]
-        x = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
-        x = self.unpatchify(x)                   # (N, out_channels, H, W)
+                hs = [self.struct_identity(x) for _ in self.projectors] # save the state
+        z = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
+        z = self.unpatchify(z)                   # (N, out_channels, H, W)
+        # print(torch.allclose(x, hs[0]))
 
-        return x, zs
+        return z, zs, hs
 
 
 #################################################################################

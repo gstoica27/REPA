@@ -8,7 +8,7 @@ import math
 import warnings
 
 
-def find_experiment_checkpoint_paths(root_dir, experiment_dir):
+def find_experiment_checkpoint_paths(root_dir, experiment_dir=''):
     """
     Finds all the checkpoint paths in the experiment directory.
     """
@@ -35,6 +35,11 @@ def convert_pylist_to_shlist(pylist):
     # shlist = ' '.join(pylist)
     # return shlist
     return str(pylist).replace('[', '').replace(']', '').replace("'", '"').replace('exps/', '').replace(',', '')
+
+def get_remaining_paths(root_dir, lookup_dir):
+    all_paths = find_experiment_checkpoint_paths(root_dir)
+    unevaluated_paths = [i for i in all_paths if not os.path.exists(os.path.join(lookup_dir, i))]
+    return convert_pylist_to_shlist(unevaluated_paths)
 
 # code from SiT repository
 pretrained_models = {'last.pt'}
