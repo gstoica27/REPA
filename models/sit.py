@@ -193,7 +193,11 @@ class SiT(nn.Module):
         self.z_dims = z_dims
         self.encoder_depth = encoder_depth
         self.structure_depth = structure_depth
-
+        print("----------------------------------------------")
+        print("The encoder depth is: ", self.encoder_depth)
+        print("The structure depth is: ", self.structure_depth)
+        print("----------------------------------------------")
+        
         self.x_embedder = PatchEmbed(
             input_size, patch_size, in_channels, hidden_size, bias=True
             )

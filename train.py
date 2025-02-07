@@ -233,6 +233,7 @@ def main(args, exp_name):
         use_cfg = (args.cfg_prob > 0),
         z_dims = z_dims,
         encoder_depth=args.encoder_depth,
+        structure_depth=args.struct_encoder_depth,
         **block_kwargs
     )
 
