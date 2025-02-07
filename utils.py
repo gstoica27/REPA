@@ -8,12 +8,14 @@ import math
 import warnings
 
 
-def find_experiment_checkpoint_paths(root_dir, experiment_dir=''):
+def find_experiment_checkpoint_paths(root_dir, experiment_dir='', ignore_dirs=[]):
     """
     Finds all the checkpoint paths in the experiment directory.
     """
     checkpoint_paths = []
     check_dir = os.path.join(root_dir, experiment_dir)
+    if any([ignore_dir in check_dir for ignore_dir in ignore_dirs]):
+        return []
     if 'checkpoints' in os.listdir(check_dir):
         checkpoints = os.listdir(os.path.join(check_dir, 'checkpoints'))
         if len(checkpoints) == 0:
@@ -24,7 +26,7 @@ def find_experiment_checkpoint_paths(root_dir, experiment_dir=''):
         return [experiment_dir]
     for sub_dir in os.listdir(check_dir):
         new_dir = os.path.join(experiment_dir, sub_dir)
-        checkpoint_paths.extend(find_experiment_checkpoint_paths(root_dir, new_dir))
+        checkpoint_paths.extend(find_experiment_checkpoint_paths(root_dir, new_dir, ignore_dirs=ignore_dirs))
     
     return checkpoint_paths
 
@@ -36,8 +38,8 @@ def convert_pylist_to_shlist(pylist):
     # return shlist
     return str(pylist).replace('[', '').replace(']', '').replace("'", '"').replace('exps/', '').replace(',', '')
 
-def get_remaining_paths(root_dir, lookup_dir):
-    all_paths = find_experiment_checkpoint_paths(root_dir)
+def get_remaining_paths(root_dir, lookup_dir, ignore_dirs=[]):
+    all_paths = find_experiment_checkpoint_paths(root_dir, ignore_dirs=ignore_dirs)
     unevaluated_paths = [i for i in all_paths if not os.path.exists(os.path.join(lookup_dir, i))]
     return convert_pylist_to_shlist(unevaluated_paths)
 

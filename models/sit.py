@@ -171,6 +171,7 @@ class SiT(nn.Module):
         hidden_size=1152,
         decoder_hidden_size=768,
         encoder_depth=8,
+        structure_depth=8,
         depth=28,
         num_heads=16,
         mlp_ratio=4.0,
@@ -191,6 +192,7 @@ class SiT(nn.Module):
         self.num_classes = num_classes
         self.z_dims = z_dims
         self.encoder_depth = encoder_depth
+        self.structure_depth = structure_depth
 
         self.x_embedder = PatchEmbed(
             input_size, patch_size, in_channels, hidden_size, bias=True
@@ -284,6 +286,7 @@ class SiT(nn.Module):
             x = block(x, c)                      # (N, T, D)
             if (i + 1) == self.encoder_depth:
                 zs = [projector(x.reshape(-1, D)).reshape(N, T, -1) for projector in self.projectors]
+            if (i + 1) == self.structure_depth:
                 hs = [self.struct_identity(x) for _ in self.projectors] # save the state
         z = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
         z = self.unpatchify(z)                   # (N, out_channels, H, W)

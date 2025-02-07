@@ -149,6 +149,7 @@ def create_experiment_name(args):
         
         coeff_str = str(args.struct_coeff).replace('.', 'p')    
         struct_name += f"-{coeff_str}"
+        struct_name += f"-enc{args.struct_encoder_depth}"
         
         exp_name += struct_name
         offset = "-"
@@ -511,6 +512,7 @@ def parse_args(input_args=None):
     parser.add_argument("--struct-coeff", type=float, default=0.0)
     parser.add_argument('--struct-method', type=str, default=None, choices=[None, "between_images", "between_tokens", "between_images_per_token"])
     parser.add_argument('--struct-add-relu', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--struct-encoder-depth', type=int, default=8)
     
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -529,3 +531,12 @@ if __name__ == "__main__":
     except:
         print("Retrying....")
         main(args, exp_name)
+
+
+
+
+
+
+
+
+
