@@ -3,18 +3,27 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
-def mean_flat(x):
+def mean_flat(x, temperature=1.0):
     """
     Take the mean over all non-batch dimensions.
     """
     return torch.mean(x, dim=list(range(1, len(x.size()))))
 
-def sum_flat(x):
+def sum_flat(x, temperature=1.):
     """
     Take the mean over all non-batch dimensions.
     """
     return torch.sum(x, dim=list(range(1, len(x.size()))))
 
+def self_weighted_mean_flat(x, temperature=100):
+    """"
+    Compute a self-weighted mean over all non-batch dimensions.
+    Rather than weighting each element equally, we weight each element according to its loss. 
+    This is intended to act as a continuous version of the "disjoint mean" operation.
+    """
+    denominator = F.tanh(x * temperature).sum(dim=list(range(1, len(x.size()))))
+    numerator = torch.sum(x, dim=list(range(1, len(x.size()))))
+    return numerator / denominator
 
 def compute_hsic_parallel(A, B):
     """
@@ -147,6 +156,8 @@ class SILoss:
             latents_bias=None,
             struct_method=None,
             struct_add_relu=True,
+            denoising_type="mean",
+            denoising_weight=1.0,
             ):
         self.prediction = prediction
         self.weighting = weighting
@@ -157,6 +168,16 @@ class SILoss:
         self.latents_bias = latents_bias
         self.struct_method = struct_method
         self.struct_add_relu = struct_add_relu
+        
+        if denoising_type == "mean":
+            print("Using mean denoising.")
+            self.denoising_fn = mean_flat
+        elif denoising_type == "self_weighted_mean":
+            print("Using self-weighted mean denoising.")
+            self.denoising_fn = self_weighted_mean_flat
+        else:
+            raise NotImplementedError("Denoising type {} not implemented.".format(denoising_type))
+        self.denoising_weight = denoising_weight
 
     def interpolant(self, t):
         if self.path_type == "linear":
@@ -211,7 +232,7 @@ class SILoss:
         else:
             raise NotImplementedError() # TODO: add x or eps prediction
         model_output, zs_tilde, hs_tilde  = model(model_input, time_input.flatten(), **model_kwargs)
-        denoising_loss = mean_flat((model_output - model_target) ** 2)
+        denoising_loss = self.denoising_fn((model_output - model_target) ** 2, temperature=self.denoising_weight)
 
         # projection loss
         proj_loss = 0.

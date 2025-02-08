@@ -169,6 +169,15 @@ def create_experiment_name(args):
     exp_name += f"-enc{args.encoder_depth}"
     # Add batch size to name
     exp_name += f"-bs{args.batch_size}"
+    # add denoising loss to name
+    if args.denoising_type != 'mean':
+        if args.denoising_type == 'self_weighted_mean':
+            denoising_name = 'swm'
+        else:
+            raise NotImplementedError()
+        coeff_str = str(args.denoising_temp).replace('.', 'p')
+        exp_name += f"-{denoising_name}Temp{coeff_str}"
+    
     print(exp_name)
     return exp_name
 
@@ -260,7 +269,8 @@ def main(args, exp_name):
         weighting=args.weighting,
         struct_method=args.struct_method,
         struct_add_relu=args.struct_add_relu,
-        
+        denoising_type=args.denoising_type,
+        denoising_weight=args.denoising_temp,
     )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -514,6 +524,10 @@ def parse_args(input_args=None):
     parser.add_argument('--struct-method', type=str, default=None, choices=[None, "between_images", "between_tokens", "between_images_per_token"])
     parser.add_argument('--struct-add-relu', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--struct-encoder-depth', type=int, default=8)
+    
+    # Additional terms
+    parser.add_argument("--denoising-type", type=str, default="mean", choices=["mean", "self_weighted_mean"])
+    parser.add_argument("--denoising-temp", type=float, default=1.0)
     
     if input_args is not None:
         args = parser.parse_args(input_args)
