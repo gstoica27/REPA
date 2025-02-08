@@ -21,7 +21,6 @@ def self_weighted_mean_flat(x, temperature=100):
     Rather than weighting each element equally, we weight each element according to its loss. 
     This is intended to act as a continuous version of the "disjoint mean" operation.
     """
-    pdb.set_trace()
     weight = F.tanh(x * temperature)
     z = sum_flat(weight * x)
     denom = sum_flat(weight)
