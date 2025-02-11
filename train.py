@@ -173,6 +173,12 @@ def create_experiment_name(args):
     if args.denoising_type != 'mean':
         if args.denoising_type == 'self_weighted_mean':
             denoising_name = 'swm'
+        elif args.denoising_type == 'softmax_weighted_mean':
+            denoising_name = 'sftwm'
+        elif args.denoising_type == 'contrastive_mse':
+            denoising_name = 'conmse'
+        elif args.denoising_type == 'contrastive':
+            denoising_name = 'con'
         else:
             raise NotImplementedError()
         coeff_str = str(args.denoising_temp).replace('.', 'p')
@@ -526,7 +532,7 @@ def parse_args(input_args=None):
     parser.add_argument('--struct-encoder-depth', type=int, default=8)
     
     # Additional terms
-    parser.add_argument("--denoising-type", type=str, default="mean", choices=["mean", "self_weighted_mean"])
+    parser.add_argument("--denoising-type", type=str, default="mean", choices=["mean", "self_weighted_mean", "softmax_weighted_mean", "contrastive_mse", "contrastive"])
     parser.add_argument("--denoising-temp", type=float, default=1.0)
     
     if input_args is not None:

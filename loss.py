@@ -15,16 +15,77 @@ def sum_flat(x, temperature=1.):
     """
     return torch.sum(x, dim=list(range(1, len(x.size()))))
 
-def self_weighted_mean_flat(x, temperature=100):
+def mse_flat(x, y, temperature=1):
+    err = (x - y) ** 2
+    return mean_flat(err)
+
+def self_weighted_mean_flat(x, y, temperature=100):
     """"
     Compute a self-weighted mean over all non-batch dimensions.
     Rather than weighting each element equally, we weight each element according to its loss. 
     This is intended to act as a continuous version of the "disjoint mean" operation.
     """
-    weight = F.tanh(x * temperature)
-    z = sum_flat(weight * x)
+    err = (x - y) ** 2
+    weight = F.tanh(err * temperature)
+    z = sum_flat(weight * z)
     denom = sum_flat(weight)
     return z / denom
+
+def constrative_mse_loss(x, y, temperature=1.):
+    x = x.flatten(1)
+    y = y.flatten(1)
+    contrastive_err = ((x[None] - y[:, None]) ** 2).mean(-1) / temperature
+    labels = torch.arange(x.shape[0]).to(x.device)
+    loss_gen = F.cross_entropy(-contrastive_err, labels)
+    loss_rec = F.cross_entropy(-contrastive_err.T, labels)
+    loss = (loss_gen + loss_rec) / 2.
+    return loss
+
+def contrastive_cos_loss(x, y, temperature=0.):
+    x = F.normalize(x.flatten(1), p=2, dim=1)
+    y = F.normalize(y.flatten(1), p=2, dim=1)
+    contrastive_err = (x @ y.T) / temperature
+    labels = torch.arange(x.shape[0]).to(x.device)
+    loss_gen = F.cross_entropy(contrastive_err, labels)
+    loss_rec = F.cross_entropy(contrastive_err.T, labels)
+    loss = (loss_gen + loss_rec) / 2.
+    return loss
+    
+def softmax_weighted_mean(x, temperature=1):
+    """
+    Compute a weighted mean using softmax weights.
+    """
+    weight = torch.exp(x * temperature)  # Softmax numerator
+    weight = weight / weight.sum()  # Normalize to sum to 1
+    z = (weight * x).sum()
+    return z
+
+def softmax_weighted_mean(x, temperature=1.0):
+    """
+    Compute a softmax-weighted mean over all non-batch dimensions.
+    """
+    z = x.flatten(1)
+    weight = F.softmax(z * temperature, dim=-1)
+    return sum_flat(weight * z)
+
+def choose_denoising_loss(name):
+    if name == "mse":
+        print('Using MSE loss')
+        return mse_flat
+    elif name == "self_weighted_mean":
+        print('Using self-weighted mean loss')
+        return self_weighted_mean_flat
+    elif name == "softmax_weighted_mean":
+        print('Using softmax-weighted mean loss')
+        return softmax_weighted_mean
+    elif name == 'contrastive_mse':
+        print('Using contrastive MSE loss')
+        return constrative_mse_loss
+    elif name == 'contrastive':
+        print('Using contrastive loss')
+        return contrastive_cos_loss
+    else:
+        raise NotImplementedError("Denoising loss {} not implemented.".format(name))
 
 def compute_hsic_parallel(A, B):
     """
@@ -170,14 +231,7 @@ class SILoss:
         self.struct_method = struct_method
         self.struct_add_relu = struct_add_relu
         
-        if denoising_type == "mean":
-            print("Using mean denoising.")
-            self.denoising_fn = mean_flat
-        elif denoising_type == "self_weighted_mean":
-            print("Using self-weighted mean denoising.")
-            self.denoising_fn = self_weighted_mean_flat
-        else:
-            raise NotImplementedError("Denoising type {} not implemented.".format(denoising_type))
+        self.denoising_fn = choose_denoising_loss(denoising_type)
         self.denoising_weight = denoising_weight
 
     def interpolant(self, t):
@@ -233,8 +287,8 @@ class SILoss:
         else:
             raise NotImplementedError() # TODO: add x or eps prediction
         model_output, zs_tilde, hs_tilde  = model(model_input, time_input.flatten(), **model_kwargs)
-        denoising_loss = self.denoising_fn((model_output - model_target) ** 2, temperature=self.denoising_weight)
-
+        denoising_loss = self.denoising_fn(model_output, model_target, temperature=self.denoising_weight)
+        # pdb.set_trace()
         # projection loss
         proj_loss = 0.
         bsz = zs[0].shape[0]
