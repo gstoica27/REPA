@@ -31,6 +31,17 @@ def self_weighted_mean_flat(x, y, temperature=100):
     denom = sum_flat(weight)
     return z / denom
 
+def triplet_mse_loss(x, y, temperature=1.0):
+    x = x.flatten(1)
+    y = y.flatten(1)
+    error = ((x[None] - y[:, None]) ** 2).mean(-1)
+    indices = torch.arange(x.shape[0]).to(x.device)
+    choices = torch.tensor([indices[indices != i][torch.randperm(x.shape[0]-1)[0]] for i in range(x.shape[0])])
+    negatives = error[np.arange(x.shape[0]), choices]
+    positives = error.diagonal()
+    loss = positives - temperature * negatives
+    return loss
+
 def contrastive_mse_loss(x, y, temperature=1.):
     x = x.flatten(1)
     y = y.flatten(1)
@@ -96,6 +107,9 @@ def choose_denoising_loss(name):
     elif name == 'contrastive_cos':
         print('Using contrastive cosine loss')
         return contrastive_cos_loss
+    elif name == 'triplet_mse':
+        print('Using triplet MSE loss')
+        return triplet_mse_loss
     else:
         raise NotImplementedError("Denoising loss {} not implemented.".format(name))
 

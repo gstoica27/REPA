@@ -181,6 +181,8 @@ def create_experiment_name(args):
             denoising_name = 'concos'
         elif args.denoising_type == 'contrastive_mse':
             denoising_name = 'conmse'
+        elif args.denoising_type == 'triplet_mse':
+            denoising_name = 'tripmse'
         else:
             raise NotImplementedError()
         coeff_str = str(args.denoising_temp).replace('.', 'p')
@@ -541,7 +543,7 @@ def parse_args(input_args=None):
         choices=[
             "mean", "self_weighted_mean", "softmax_weighted_mean", 
             "contrastive_l2", "contrastive_cos",
-            "contrastive_mse"
+            "contrastive_mse", "triplet_mse"
         ]
     )
     parser.add_argument("--denoising-temp", type=float, default=1.0)
