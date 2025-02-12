@@ -31,7 +31,16 @@ def self_weighted_mean_flat(x, y, temperature=100):
     denom = sum_flat(weight)
     return z / denom
 
-def constrative_mse_loss(x, y, temperature=1.):
+def contrastive_mse_loss(x, y, temperature=1.):
+    x = x.flatten(1)
+    y = y.flatten(1)
+    contrastive_err = ((x[None] - y[:, None]) ** 2).mean(-1)
+    weights = -torch.ones_like(contrastive_err) / (contrastive_err.shape[0] - 1)
+    weights.fill_diagonal_(temperature)
+    loss = (weights * contrastive_err).sum(-1) / 2.
+    return loss
+
+def constrastive_l2_loss(x, y, temperature=1.):
     x = x.flatten(1)
     y = y.flatten(1)
     contrastive_err = ((x[None] - y[:, None]) ** 2).mean(-1) / temperature
@@ -78,11 +87,14 @@ def choose_denoising_loss(name):
     elif name == "softmax_weighted_mean":
         print('Using softmax-weighted mean loss')
         return softmax_weighted_mean
+    elif name == 'contrastive_l2':
+        print('Using contrastive L2 loss')
+        return constrastive_l2_loss
     elif name == 'contrastive_mse':
         print('Using contrastive MSE loss')
-        return constrative_mse_loss
-    elif name == 'contrastive':
-        print('Using contrastive loss')
+        return contrastive_mse_loss
+    elif name == 'contrastive_cos':
+        print('Using contrastive cosine loss')
         return contrastive_cos_loss
     else:
         raise NotImplementedError("Denoising loss {} not implemented.".format(name))
