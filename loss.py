@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
-def mean_flat(x, temperature=1.0):
+def mean_flat(x, temperature=1.0, **kwargs):
     """
     Take the mean over all non-batch dimensions.
     """
@@ -15,57 +15,87 @@ def sum_flat(x, temperature=1.):
     """
     return torch.sum(x, dim=list(range(1, len(x.size()))))
 
-def mse_flat(x, y, temperature=1):
-    err = (x - y) ** 2
+def mse_flat(source, target, temperature=1, **kwargs):
+    err = (source - target) ** 2
     return mean_flat(err)
 
-def self_weighted_mean_flat(x, y, temperature=100):
+def self_weighted_mean_flat(source, target, temperature=100):
     """"
     Compute a self-weighted mean over all non-batch dimensions.
     Rather than weighting each element equally, we weight each element according to its loss. 
     This is intended to act as a continuous version of the "disjoint mean" operation.
     """
-    err = (x - y) ** 2
+    err = (source - target) ** 2
     weight = F.tanh(err * temperature)
     z = sum_flat(weight * z)
     denom = sum_flat(weight)
     return z / denom
 
-def triplet_mse_loss(x, y, temperature=1.0):
-    x = x.flatten(1)
-    y = y.flatten(1)
-    error = ((x[None] - y[:, None]) ** 2).mean(-1)
-    indices = torch.arange(x.shape[0]).to(x.device)
-    choices = torch.tensor([indices[indices != i][torch.randperm(x.shape[0]-1)[0]] for i in range(x.shape[0])])
-    negatives = error[np.arange(x.shape[0]), choices]
+def triplet_mse_loss(source, target, temperature=1.0, y=None):
+    source = source.flatten(1)
+    target = target.flatten(1)
+    # pdb.set_trace()
+    error = ((source[None] - target[:, None]) ** 2).mean(-1)
+    indices = torch.arange(source.shape[0]).to(source.device)
+    choices = torch.tensor([indices[indices != i][torch.randperm(source.shape[0]-1)[0]] for i in range(source.shape[0])])
+    assert ((choices == indices.cpu()).sum() == 0).item(), "Triplet loss choices are incorrect"
+    negatives = error[np.arange(source.shape[0]), choices]
     positives = error.diagonal()
     loss = positives - temperature * negatives
     return loss
 
-def contrastive_mse_loss(x, y, temperature=1.):
-    x = x.flatten(1)
-    y = y.flatten(1)
-    contrastive_err = ((x[None] - y[:, None]) ** 2).mean(-1)
+def class_conditioned_triplet_mse_loss(source, target, y, temperature=1.0):
+    source = source.flatten(1)
+    target = target.flatten(1)
+    error = ((source[None] - target[:, None]) ** 2).mean(-1)
+    # Add a column of zeros in case the entire batch contains 1 class
+    indices = torch.arange(source.shape[0]).to(source.device)
+    error = torch.cat([error, torch.zeros_like(error[:, 1])[:, None]], dim=1)
+    choices = []
+    # pdb.set_trace()
+    for idx in range(source.shape[0]):
+        nonidx_mask = indices != idx
+        nony_mask = y != y[idx]
+        # if nony_mask.sum().item() < 255:
+        #     pdb.set_trace()
+        mask = nonidx_mask * nony_mask
+        candidates = indices[mask]
+        if len(candidates) == 0:
+            pdb.set_trace()
+            candidate = len(source.shape[0]) 
+        else:
+            candidate = candidates[torch.randperm(len(candidates))[0]]
+        choices.append(candidate)
+    choices = torch.tensor(choices).to(source.device).to(torch.int)
+    negatives = error[np.arange(source.shape[0]), choices]
+    positives = error.diagonal()
+    loss = positives - temperature * negatives
+    return loss
+
+def contrastive_mse_loss(source, target, temperature=1.):
+    source = source.flatten(1)
+    target = target.flatten(1)
+    contrastive_err = ((source[None] - target[:, None]) ** 2).mean(-1)
     weights = -torch.ones_like(contrastive_err) / (contrastive_err.shape[0] - 1)
     weights.fill_diagonal_(temperature)
     loss = (weights * contrastive_err).sum(-1) / 2.
     return loss
 
-def constrastive_l2_loss(x, y, temperature=1.):
-    x = x.flatten(1)
-    y = y.flatten(1)
-    contrastive_err = ((x[None] - y[:, None]) ** 2).mean(-1) / temperature
-    labels = torch.arange(x.shape[0]).to(x.device)
+def constrastive_l2_loss(source, target, temperature=1.):
+    source = source.flatten(1)
+    target = target.flatten(1)
+    contrastive_err = ((source[None] - target[:, None]) ** 2).mean(-1) / temperature
+    labels = torch.arange(source.shape[0]).to(source.device)
     loss_gen = F.cross_entropy(-contrastive_err, labels)
     loss_rec = F.cross_entropy(-contrastive_err.T, labels)
     loss = (loss_gen + loss_rec) / 2.
     return loss
 
-def contrastive_cos_loss(x, y, temperature=0.):
-    x = F.normalize(x.flatten(1), p=2, dim=1)
-    y = F.normalize(y.flatten(1), p=2, dim=1)
-    contrastive_err = (x @ y.T) / temperature
-    labels = torch.arange(x.shape[0]).to(x.device)
+def contrastive_cos_loss(source, target, temperature=0.):
+    source = F.normalize(source.flatten(1), p=2, dim=1)
+    target = F.normalize(target.flatten(1), p=2, dim=1)
+    contrastive_err = (source @ target.T) / temperature
+    labels = torch.arange(source.shape[0]).to(source.device)
     loss_gen = F.cross_entropy(contrastive_err, labels)
     loss_rec = F.cross_entropy(contrastive_err.T, labels)
     loss = (loss_gen + loss_rec) / 2.
@@ -110,6 +140,9 @@ def choose_denoising_loss(name):
     elif name == 'triplet_mse':
         print('Using triplet MSE loss')
         return triplet_mse_loss
+    elif name == 'class_conditioned_triplet_mse':
+        print('Using class-conditioned triplet MSE loss')
+        return class_conditioned_triplet_mse_loss
     else:
         raise NotImplementedError("Denoising loss {} not implemented.".format(name))
 
@@ -313,7 +346,7 @@ class SILoss:
         else:
             raise NotImplementedError() # TODO: add x or eps prediction
         model_output, zs_tilde, hs_tilde  = model(model_input, time_input.flatten(), **model_kwargs)
-        denoising_loss = self.denoising_fn(model_output, model_target, temperature=self.denoising_weight)
+        denoising_loss = self.denoising_fn(model_output, model_target, temperature=self.denoising_weight, y=model_kwargs['y'])
         # pdb.set_trace()
         # projection loss
         proj_loss = 0.
