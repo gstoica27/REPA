@@ -15,128 +15,126 @@ def sum_flat(x, temperature=1.):
     """
     return torch.sum(x, dim=list(range(1, len(x.size()))))
 
-def mse_flat(source, target, temperature=1, **kwargs):
-    err = (source - target) ** 2
+def mse_flat(x, y, temperature=1, **kwargs):
+    err = (x - y) ** 2
     return mean_flat(err)
 
-def self_weighted_mean_flat(source, target, temperature=100):
-    """"
-    Compute a self-weighted mean over all non-batch dimensions.
-    Rather than weighting each element equally, we weight each element according to its loss. 
-    This is intended to act as a continuous version of the "disjoint mean" operation.
-    """
-    err = (source - target) ** 2
-    weight = F.tanh(err * temperature)
-    z = sum_flat(weight * z)
-    denom = sum_flat(weight)
-    return z / denom
+# def self_weighted_mean_flat(source, target, temperature=100):
+#     """"
+#     Compute a self-weighted mean over all non-batch dimensions.
+#     Rather than weighting each element equally, we weight each element according to its loss. 
+#     This is intended to act as a continuous version of the "disjoint mean" operation.
+#     """
+#     err = (source - target) ** 2
+#     weight = F.tanh(err * temperature)
+#     z = sum_flat(weight * z)
+#     denom = sum_flat(weight)
+#     return z / denom
 
-def triplet_mse_loss(source, target, temperature=1.0, y=None):
-    source = source.flatten(1)
-    target = target.flatten(1)
-    # pdb.set_trace()
-    error = ((source[None] - target[:, None]) ** 2).mean(-1)
-    indices = torch.arange(source.shape[0]).to(source.device)
-    choices = torch.tensor([indices[indices != i][torch.randperm(source.shape[0]-1)[0]] for i in range(source.shape[0])])
+def triplet_mse_loss(x, y, temperature=1.0, cls=None):
+    x = x.flatten(1)
+    y = y.flatten(1)
+    error = ((x[None] - y[:, None]) ** 2).mean(-1)
+    indices = torch.arange(x.shape[0]).to(x.device)
+    choices = torch.tensor([indices[indices != i][torch.randperm(x.shape[0]-1)[0]] for i in range(x.shape[0])])
     assert ((choices == indices.cpu()).sum() == 0).item(), "Triplet loss choices are incorrect"
-    negatives = error[np.arange(source.shape[0]), choices]
+    negatives = error[np.arange(x.shape[0]), choices]
     positives = error.diagonal()
     loss = positives - temperature * negatives
     return loss
 
-def class_conditioned_triplet_mse_loss(source, target, y, temperature=1.0):
-    source = source.flatten(1)
-    target = target.flatten(1)
-    error = ((source[None] - target[:, None]) ** 2).mean(-1)
+def class_conditioned_triplet_mse_loss(x, y, cls=None, temperature=1.0):
+    x, y = x.flatten(1), y.flatten(1)
+    error = ((x[None] - y[:, None]) ** 2).mean(-1)
     # Add a column of zeros in case the entire batch contains 1 class
-    indices = torch.arange(source.shape[0]).to(source.device)
+    indices = torch.arange(x.shape[0]).to(y.device)
     error = torch.cat([error, torch.zeros_like(error[:, 1])[:, None]], dim=1)
     choices = []
-    # pdb.set_trace()
-    for idx in range(source.shape[0]):
+    pdb.set_trace()
+    for idx in range(x.shape[0]):
         nonidx_mask = indices != idx
-        nony_mask = y != y[idx]
+        nony_mask = cls != cls[idx]
         # if nony_mask.sum().item() < 255:
         #     pdb.set_trace()
         mask = nonidx_mask * nony_mask
         candidates = indices[mask]
         if len(candidates) == 0:
             pdb.set_trace()
-            candidate = len(source.shape[0]) 
+            candidate = len(x.shape[0]) 
         else:
             candidate = candidates[torch.randperm(len(candidates))[0]]
         choices.append(candidate)
-    choices = torch.tensor(choices).to(source.device).to(torch.int)
-    negatives = error[np.arange(source.shape[0]), choices]
+    choices = torch.tensor(choices).to(x.device).to(torch.int)
+    negatives = error[np.arange(x.shape[0]), choices]
     positives = error.diagonal()
     loss = positives - temperature * negatives
     return loss
 
-def contrastive_mse_loss(source, target, temperature=1.):
-    source = source.flatten(1)
-    target = target.flatten(1)
-    contrastive_err = ((source[None] - target[:, None]) ** 2).mean(-1)
-    weights = -torch.ones_like(contrastive_err) / (contrastive_err.shape[0] - 1)
-    weights.fill_diagonal_(temperature)
-    loss = (weights * contrastive_err).sum(-1) / 2.
-    return loss
+# def contrastive_mse_loss(source, target, temperature=1.):
+#     source = source.flatten(1)
+#     target = target.flatten(1)
+#     contrastive_err = ((source[None] - target[:, None]) ** 2).mean(-1)
+#     weights = -torch.ones_like(contrastive_err) / (contrastive_err.shape[0] - 1)
+#     weights.fill_diagonal_(temperature)
+#     loss = (weights * contrastive_err).sum(-1) / 2.
+#     return loss
 
-def constrastive_l2_loss(source, target, temperature=1.):
-    source = source.flatten(1)
-    target = target.flatten(1)
-    contrastive_err = ((source[None] - target[:, None]) ** 2).mean(-1) / temperature
-    labels = torch.arange(source.shape[0]).to(source.device)
-    loss_gen = F.cross_entropy(-contrastive_err, labels)
-    loss_rec = F.cross_entropy(-contrastive_err.T, labels)
-    loss = (loss_gen + loss_rec) / 2.
-    return loss
+# def constrastive_l2_loss(source, target, temperature=1.):
+#     source = source.flatten(1)
+#     target = target.flatten(1)
+#     contrastive_err = ((source[None] - target[:, None]) ** 2).mean(-1) / temperature
+#     labels = torch.arange(source.shape[0]).to(source.device)
+#     loss_gen = F.cross_entropy(-contrastive_err, labels)
+#     loss_rec = F.cross_entropy(-contrastive_err.T, labels)
+#     loss = (loss_gen + loss_rec) / 2.
+#     return loss
 
-def contrastive_cos_loss(source, target, temperature=0.):
-    source = F.normalize(source.flatten(1), p=2, dim=1)
-    target = F.normalize(target.flatten(1), p=2, dim=1)
-    contrastive_err = (source @ target.T) / temperature
-    labels = torch.arange(source.shape[0]).to(source.device)
-    loss_gen = F.cross_entropy(contrastive_err, labels)
-    loss_rec = F.cross_entropy(contrastive_err.T, labels)
-    loss = (loss_gen + loss_rec) / 2.
-    return loss
+# def contrastive_cos_loss(source, target, temperature=0.):
+#     source = F.normalize(source.flatten(1), p=2, dim=1)
+#     target = F.normalize(target.flatten(1), p=2, dim=1)
+#     contrastive_err = (source @ target.T) / temperature
+#     labels = torch.arange(source.shape[0]).to(source.device)
+#     loss_gen = F.cross_entropy(contrastive_err, labels)
+#     loss_rec = F.cross_entropy(contrastive_err.T, labels)
+#     loss = (loss_gen + loss_rec) / 2.
+#     return loss
     
-def softmax_weighted_mean(x, temperature=1):
-    """
-    Compute a weighted mean using softmax weights.
-    """
-    weight = torch.exp(x * temperature)  # Softmax numerator
-    weight = weight / weight.sum()  # Normalize to sum to 1
-    z = (weight * x).sum()
-    return z
+# def softmax_weighted_mean(x, temperature=1):
+#     """
+#     Compute a weighted mean using softmax weights.
+#     """
+#     weight = torch.exp(x * temperature)  # Softmax numerator
+#     weight = weight / weight.sum()  # Normalize to sum to 1
+#     z = (weight * x).sum()
+#     return z
 
-def softmax_weighted_mean(x, temperature=1.0):
-    """
-    Compute a softmax-weighted mean over all non-batch dimensions.
-    """
-    z = x.flatten(1)
-    weight = F.softmax(z * temperature, dim=-1)
-    return sum_flat(weight * z)
+# def softmax_weighted_mean(x, temperature=1.0):
+#     """
+#     Compute a softmax-weighted mean over all non-batch dimensions.
+#     """
+#     z = x.flatten(1)
+#     weight = F.softmax(z * temperature, dim=-1)
+#     return sum_flat(weight * z)
 
 def choose_denoising_loss(name):
     if name == "mse":
         print('Using MSE loss')
         return mse_flat
-    elif name == "self_weighted_mean":
-        print('Using self-weighted mean loss')
-        return self_weighted_mean_flat
-    elif name == "softmax_weighted_mean":
-        print('Using softmax-weighted mean loss')
-        return softmax_weighted_mean
-    elif name == 'contrastive_l2':
-        print('Using contrastive L2 loss')
-        return constrastive_l2_loss
-    elif name == 'contrastive_mse':
-        print('Using contrastive MSE loss')
-        return contrastive_mse_loss
-    elif name == 'contrastive_cos':
-        print('Using contrastive cosine loss')
-        return contrastive_cos_loss
+    # elif name == "self_weighted_mean":
+    #     print('Using self-weighted mean loss')
+    #     return self_weighted_mean_flat
+    # elif name == "softmax_weighted_mean":
+    #     print('Using softmax-weighted mean loss')
+    #     return softmax_weighted_mean
+    # elif name == 'contrastive_l2':
+    #     print('Using contrastive L2 loss')
+    #     return constrastive_l2_loss
+    # elif name == 'contrastive_mse':
+    #     print('Using contrastive MSE loss')
+    #     return contrastive_mse_loss
+    # elif name == 'contrastive_cos':
+    #     print('Using contrastive cosine loss')
+    #     return contrastive_cos_loss
     elif name == 'triplet_mse':
         print('Using triplet MSE loss')
         return triplet_mse_loss
@@ -346,7 +344,7 @@ class SILoss:
         else:
             raise NotImplementedError() # TODO: add x or eps prediction
         model_output, zs_tilde, hs_tilde  = model(model_input, time_input.flatten(), **model_kwargs)
-        denoising_loss = self.denoising_fn(model_output, model_target, temperature=self.denoising_weight, y=model_kwargs['y'])
+        denoising_loss = self.denoising_fn(model_output, model_target, temperature=self.denoising_weight, cls=model_kwargs['y'])
         # pdb.set_trace()
         # projection loss
         proj_loss = 0.
