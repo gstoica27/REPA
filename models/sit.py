@@ -6,7 +6,6 @@
 # MAE: https://github.com/facebookresearch/mae/blob/main/models_mae.py
 # --------------------------------------------------------
 
-import pdb
 import torch
 import torch.nn as nn
 import numpy as np
@@ -171,7 +170,6 @@ class SiT(nn.Module):
         hidden_size=1152,
         decoder_hidden_size=768,
         encoder_depth=8,
-        structure_depth=8,
         depth=28,
         num_heads=16,
         mlp_ratio=4.0,
@@ -192,12 +190,7 @@ class SiT(nn.Module):
         self.num_classes = num_classes
         self.z_dims = z_dims
         self.encoder_depth = encoder_depth
-        self.structure_depth = structure_depth
-        print("----------------------------------------------")
-        print("The encoder depth is: ", self.encoder_depth)
-        print("The structure depth is: ", self.structure_depth)
-        print("----------------------------------------------")
-        
+
         self.x_embedder = PatchEmbed(
             input_size, patch_size, in_channels, hidden_size, bias=True
             )
@@ -215,8 +208,6 @@ class SiT(nn.Module):
             ])
         self.final_layer = FinalLayer(decoder_hidden_size, patch_size, self.out_channels)
         self.initialize_weights()
-        # Add identity module for structure loss
-        self.struct_identity = nn.Identity()
 
     def initialize_weights(self):
         # Initialize transformer layers:
@@ -290,13 +281,10 @@ class SiT(nn.Module):
             x = block(x, c)                      # (N, T, D)
             if (i + 1) == self.encoder_depth:
                 zs = [projector(x.reshape(-1, D)).reshape(N, T, -1) for projector in self.projectors]
-            if (i + 1) == self.structure_depth:
-                hs = [self.struct_identity(x) for _ in self.projectors] # save the state
-        z = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
-        z = self.unpatchify(z)                   # (N, out_channels, H, W)
-        # print(torch.allclose(x, hs[0]))
+        x = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
+        x = self.unpatchify(x)                   # (N, out_channels, H, W)
 
-        return z, zs, hs
+        return x, zs
 
 
 #################################################################################
@@ -401,4 +389,3 @@ SiT_models = {
     'SiT-B/2':  SiT_B_2,   'SiT-B/4':  SiT_B_4,   'SiT-B/8':  SiT_B_8,
     'SiT-S/2':  SiT_S_2,   'SiT-S/4':  SiT_S_4,   'SiT-S/8':  SiT_S_8,
 }
-

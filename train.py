@@ -133,26 +133,26 @@ def create_experiment_name(args):
     exp_name = ""
     offset = ""
     # Add structure to name
-    if args.struct_coeff > 0:
-        assert args.struct_method is not None
-        if args.struct_method == 'between_images':
-            struct_name = 'structImg'
-        elif args.struct_method == 'between_tokens':
-            struct_name = 'structTok'
-        elif args.struct_method == 'between_images_per_token':
-            struct_name = 'structImgByTok'
-        else:
-            raise NotImplementedError()
+    # if args.struct_coeff > 0:
+    #     assert args.struct_method is not None
+    #     if args.struct_method == 'between_images':
+    #         struct_name = 'structImg'
+    #     elif args.struct_method == 'between_tokens':
+    #         struct_name = 'structTok'
+    #     elif args.struct_method == 'between_images_per_token':
+    #         struct_name = 'structImgByTok'
+    #     else:
+    #         raise NotImplementedError()
         
-        if not args.struct_add_relu:
-            struct_name += "-noRelu"
+    #     if not args.struct_add_relu:
+    #         struct_name += "-noRelu"
         
-        coeff_str = str(args.struct_coeff).replace('.', 'p')    
-        struct_name += f"-{coeff_str}"
-        struct_name += f"-enc{args.struct_encoder_depth}"
+    #     coeff_str = str(args.struct_coeff).replace('.', 'p')    
+    #     struct_name += f"-{coeff_str}"
+    #     struct_name += f"-enc{args.struct_encoder_depth}"
         
-        exp_name += struct_name
-        offset = "-"
+    #     exp_name += struct_name
+    #     offset = "-"
     # Add REPA to name
     if args.proj_coeff > 0:
         path_name = str(args.path_type).capitalize()
@@ -171,20 +171,12 @@ def create_experiment_name(args):
     exp_name += f"-bs{args.batch_size}"
     # add denoising loss to name
     if args.denoising_type != 'mean':
-        if args.denoising_type == 'self_weighted_mean':
-            denoising_name = 'swm'
-        elif args.denoising_type == 'softmax_weighted_mean':
-            denoising_name = 'sftwm'
-        elif args.denoising_type == 'contrastive_l2':
-            denoising_name = 'conl2'
-        elif args.denoising_type == 'contrastive_cos':
-            denoising_name = 'concos'
-        elif args.denoising_type == 'contrastive_mse':
-            denoising_name = 'conmse'
-        elif args.denoising_type == 'triplet_mse':
-            denoising_name = 'tripmse'
-        elif args.denoising_type == 'class_conditioned_triplet_mse':
-            denoising_name = 'cctripmse'
+        if args.denoising_type == 'triplet_any_noise':
+            denoising_name = 'tripany'
+        # elif args.denoising_type == 'class_conditioned_triplet_mse':
+            # denoising_name = 'cctripmse'
+        elif args.denoising_type == 'triplet_same_noise':
+            denoising_name = 'tripsame'
         else:
             raise NotImplementedError()
         coeff_str = str(args.denoising_temp).replace('.', 'p')
@@ -254,7 +246,6 @@ def main(args, exp_name):
         use_cfg = (args.cfg_prob > 0),
         z_dims = z_dims,
         encoder_depth=args.encoder_depth,
-        structure_depth=args.struct_encoder_depth,
         **block_kwargs
     )
 
@@ -271,19 +262,30 @@ def main(args, exp_name):
         ).view(1, 4, 1, 1).to(device)
 
     # create loss function
-    loss_fn = SILoss(
-        prediction=args.prediction,
-        path_type=args.path_type, 
-        encoders=encoders,
-        accelerator=accelerator,
-        latents_scale=latents_scale,
-        latents_bias=latents_bias,
-        weighting=args.weighting,
-        struct_method=args.struct_method,
-        struct_add_relu=args.struct_add_relu,
-        denoising_type=args.denoising_type,
-        denoising_weight=args.denoising_temp,
-    )
+    if args.denoising_type == 'mean':
+        from loss import SILoss    
+        loss_fn = SILoss(
+            prediction=args.prediction,
+            path_type=args.path_type, 
+            encoders=encoders,
+            accelerator=accelerator,
+            latents_scale=latents_scale,
+            latents_bias=latents_bias,
+            weighting=args.weighting,
+        )
+    else:
+        from triplet_loss import TripletSILoss
+        loss_fn = TripletSILoss(
+            prediction=args.prediction,
+            path_type=args.path_type, 
+            encoders=encoders,
+            accelerator=accelerator,
+            latents_scale=latents_scale,
+            latents_bias=latents_bias,
+            weighting=args.weighting,
+            denoising_type=args.denoising_type,
+            denoising_weight=args.denoising_temp,
+        )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
     
@@ -396,11 +398,10 @@ def main(args, exp_name):
 
             with accelerator.accumulate(model):
                 model_kwargs = dict(y=labels)
-                loss, proj_loss, struct_loss = loss_fn(model, x, model_kwargs, zs=zs)
+                loss, proj_loss = loss_fn(model, x, model_kwargs, zs=zs)
                 loss_mean = loss.mean()
                 proj_loss_mean = proj_loss.mean()
-                struct_loss_mean = struct_loss.mean()
-                loss = loss_mean + proj_loss_mean * args.proj_coeff + struct_loss_mean * args.struct_coeff
+                loss = loss_mean + proj_loss_mean * args.proj_coeff
                     
                 ## optimization
                 accelerator.backward(loss)
@@ -457,7 +458,6 @@ def main(args, exp_name):
             logs = {
                 "loss": accelerator.gather(loss_mean).mean().detach().item(), 
                 "proj_loss": accelerator.gather(proj_loss_mean).mean().detach().item(),
-                "struct_loss": accelerator.gather(struct_loss_mean).mean().detach().item(),
                 "grad_norm": accelerator.gather(grad_norm).mean().detach().item()
             }
             progress_bar.set_postfix(**logs)
@@ -531,11 +531,11 @@ def parse_args(input_args=None):
     parser.add_argument("--weighting", default="uniform", type=str, help="Max gradient norm.")
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False)
     
-    # Structure Loss
-    parser.add_argument("--struct-coeff", type=float, default=0.0)
-    parser.add_argument('--struct-method', type=str, default=None, choices=[None, "between_images", "between_tokens", "between_images_per_token"])
-    parser.add_argument('--struct-add-relu', action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument('--struct-encoder-depth', type=int, default=8)
+    # # Structure Loss
+    # parser.add_argument("--struct-coeff", type=float, default=0.0)
+    # parser.add_argument('--struct-method', type=str, default=None, choices=[None, "between_images", "between_tokens", "between_images_per_token"])
+    # parser.add_argument('--struct-add-relu', action=argparse.BooleanOptionalAction, default=True)
+    # parser.add_argument('--struct-encoder-depth', type=int, default=8)
     
     # Additional terms
     parser.add_argument(
@@ -543,10 +543,10 @@ def parse_args(input_args=None):
         type=str, 
         default="mean", 
         choices=[
-            "mean", "self_weighted_mean", "softmax_weighted_mean", 
-            "contrastive_l2", "contrastive_cos",
-            "contrastive_mse", "triplet_mse", 
-            "class_conditioned_triplet_mse"
+            "mean", 
+            "triplet_any_noise", 
+            "class_conditioned_triplet_mse",
+            "triplet_same_noise"
         ]
     )
     parser.add_argument("--denoising-temp", type=float, default=1.0)
@@ -562,12 +562,13 @@ if __name__ == "__main__":
     args = parse_args()
     print("The args are: ", args)
     exp_name = create_experiment_name(args)
-    print("The experiment name is: ", exp_name)
-    try:
-        main(args, exp_name)
-    except:
-        print("Retrying....")
-        main(args, exp_name)
+    # print("The experiment name is: ", exp_name)
+    # try:
+    #     main(args, exp_name)
+    # except:
+    #     print("Retrying....")
+    #     main(args, exp_name)
+    main(args, exp_name)
 
 
 
