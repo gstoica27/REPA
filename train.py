@@ -162,11 +162,12 @@ def create_experiment_name(args):
     # Add model to name. E.g., SiT-B/2 -> sitb2
     model_name = args.model.replace('/', '-').lower().replace('-', '')
     exp_name += offset + f"{model_name}"
-    # Add teacher to name. e.g., dinov2-vit-b -> dinov2VitB
-    teacher_name = "".join([comp.capitalize() if i > 0 else comp for i, comp in enumerate(args.enc_type.split('-'))])
-    exp_name += f"-{teacher_name}"
-    # Add encoder depth to name
-    exp_name += f"-enc{args.encoder_depth}"
+    if args.proj_coeff > 0:
+        # Add teacher to name. e.g., dinov2-vit-b -> dinov2VitB
+        teacher_name = "".join([comp.capitalize() if i > 0 else comp for i, comp in enumerate(args.enc_type.split('-'))])
+        exp_name += f"-{teacher_name}"
+        # Add encoder depth to name
+        exp_name += f"-enc{args.encoder_depth}"
     # Add batch size to name
     exp_name += f"-bs{args.batch_size}"
     # add denoising loss to name
