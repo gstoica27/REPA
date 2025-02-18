@@ -564,6 +564,7 @@ def parse_args(input_args=None):
     return args
 
 if __name__ == "__main__":
+    os.symlink('hubconf.py', '/root/.cache/torch/hub/facebookresearch_dinov2_main/hubconf.py')
     args = parse_args()
     print("The args are: ", args)
     exp_name = create_experiment_name(args)
