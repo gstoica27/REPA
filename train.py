@@ -168,6 +168,8 @@ def create_experiment_name(args):
         exp_name += f"-{teacher_name}"
         # Add encoder depth to name
         exp_name += f"-enc{args.encoder_depth}"
+    else:
+        exp_name += "-vanilla"
     # Add batch size to name
     exp_name += f"-bs{args.batch_size}"
     # add denoising loss to name
