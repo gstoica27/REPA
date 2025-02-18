@@ -171,15 +171,16 @@ def create_experiment_name(args):
     # Add batch size to name
     exp_name += f"-bs{args.batch_size}"
     # add denoising loss to name
-    if args.denoising_type != 'mean':
-        if args.denoising_type == 'triplet_any_noise':
-            denoising_name = 'tripany'
-        # elif args.denoising_type == 'class_conditioned_triplet_mse':
-            # denoising_name = 'cctripmse'
-        elif args.denoising_type == 'triplet_same_noise':
-            denoising_name = 'tripsame'
-        else:
-            raise NotImplementedError()
+    if args.denoising_type == 'mean':
+        denoising_name = 'mean'
+    elif args.denoising_type == 'triplet_any_noise':
+        denoising_name = 'tripany'
+    # elif args.denoising_type == 'class_conditioned_triplet_mse':
+        # denoising_name = 'cctripmse'
+    elif args.denoising_type == 'triplet_same_noise':
+        denoising_name = 'tripsame'
+    else:
+        raise NotImplementedError()
         coeff_str = str(args.denoising_temp).replace('.', 'p')
         exp_name += f"-{denoising_name}Temp{coeff_str}"
     
@@ -543,12 +544,12 @@ def parse_args(input_args=None):
         "--denoising-type", 
         type=str, 
         default="mean", 
-        choices=[
-            "mean", 
-            "triplet_any_noise", 
-            "class_conditioned_triplet_mse",
-            "triplet_same_noise"
-        ]
+        # choices=[
+        #     "mean", 
+        #     "triplet_any_noise", 
+        #     "class_conditioned_triplet_mse",
+        #     "triplet_same_noise"
+        # ]
     )
     parser.add_argument("--denoising-temp", type=float, default=1.0)
     
