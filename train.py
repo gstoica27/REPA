@@ -570,7 +570,8 @@ if __name__ == "__main__":
         shutil.copytree(
             '/weka/prior-default/georges/redundancies/facebookresearch_dinov2_main',
             '/root/.cache/torch/hub/facebookresearch_dinov2_main',
-            dirs_exist_ok=True
+            dirs_exist_ok=True,
+            symlinks=True,
         )
     args = parse_args()
     print("The args are: ", args)
