@@ -567,8 +567,11 @@ if __name__ == "__main__":
     import shutil
     if not os.path.exists('/root/.cache/torch/hub/facebookresearch_dinov2_main/hubconf.py'):
         print("Creating symlink...")
-        print(os.path.exists('/root/.cache/torch/hub/facebookresearch_dinov2_main/hubconf.py'))
-        shutil.copyfile('hubconf.py', '/root/.cache/torch/hub/facebookresearch_dinov2_main/hubconf.py')
+        shutil.copytree(
+            '/weka/prior-default/georges/redundancies/facebookresearch_dinov2_main',
+            '/root/.cache/torch/hub/facebookresearch_dinov2_main',
+            dirs_exist_ok=True
+        )
     args = parse_args()
     print("The args are: ", args)
     exp_name = create_experiment_name(args)
