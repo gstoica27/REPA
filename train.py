@@ -405,7 +405,6 @@ def main(args, exp_name):
                 loss, proj_loss = loss_fn(model, x, model_kwargs, zs=zs)
                 loss_mean = loss.mean()
                 proj_loss_mean = proj_loss.mean()
-                print(loss_mean)
                 loss = loss_mean + proj_loss_mean * args.proj_coeff
                     
                 ## optimization
