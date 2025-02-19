@@ -183,8 +183,9 @@ def create_experiment_name(args):
         denoising_name = 'tripsame'
     else:
         raise NotImplementedError()
-        coeff_str = str(args.denoising_temp).replace('.', 'p')
-        exp_name += f"-{denoising_name}Temp{coeff_str}"
+    
+    coeff_str = str(args.denoising_temp).replace('.', 'p')
+    exp_name += f"-{denoising_name}Temp{coeff_str}"
     
     print(exp_name)
     return exp_name
