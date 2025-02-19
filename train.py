@@ -564,17 +564,31 @@ def parse_args(input_args=None):
     return args
 
 if __name__ == "__main__":
-    import shutil
-    if not os.path.exists('/root/.cache/torch/hub/facebookresearch_dinov2_main/hubconf.py'):
-        print("Creating symlink...")
-        shutil.copytree(
-            '/weka/prior-default/georges/redundancies/facebookresearch_dinov2_main',
-            '/root/.cache/torch/hub/facebookresearch_dinov2_main',
-            dirs_exist_ok=True,
-            symlinks=True,
-        )
     args = parse_args()
     print("The args are: ", args)
+
+    import torch.distributed as dist
+    
+    if dist.is_initialized():
+        if dist.get_rank() == 0:
+            while True:
+                try:
+                    torch.hub.load('facebookresearch/dinov2', f'dinov2_vitb14')
+                except Exception as e:
+                    print(e)
+                    continue
+                break
+        dist.barrier()
+    
+    # import shutil
+    # if not os.path.exists('/root/.cache/torch/hub/facebookresearch_dinov2_main/hubconf.py'):
+    #     print("Creating symlink...")
+    #     shutil.copytree(
+    #         '/weka/prior-default/georges/redundancies/facebookresearch_dinov2_main',
+    #         '/root/.cache/torch/hub/facebookresearch_dinov2_main',
+    #         dirs_exist_ok=True,
+    #         symlinks=True,
+    #     )
     exp_name = create_experiment_name(args)
     # print("The experiment name is: ", exp_name)
     try:
