@@ -1,7 +1,8 @@
 #!/bin/bash
-MODEL_NAME="SiT-XL/2"
-MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripsameTemp0p1" "linear-dinov2-b-enc8" "repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripsameTemp0p05" "repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05"
-CHECKPOINT_ITERS="0050000.pt" "0100000.pt" "0150000.pt" "0200000.pt" "0250000.pt" "0300000.pt" "0350000.pt" #"0400000.pt"
+MODEL_NAME="SiT-B/2"
+# MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripsameTemp0p1" "linear-dinov2-b-enc8" "repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripsameTemp0p05" "repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05"
+MODEL_ITERS="sitb2-vanilla-bs256-meanTemp0p0" "sitb2-vanilla-bs256-tripanyTemp0p1" "sitb2-vanilla-bs256-tripsameTemp0p1"
+CHECKPOINT_ITERS="0050000.pt" "0100000.pt" "0150000.pt" "0200000.pt" "0250000.pt" "0300000.pt" "0350000.pt" "0400000.pt"
 # Compute this list using the utils find_experiment_paths -> convert_pylist_to_shlist functions! 
 # for exp_name in "structImg-0p5-repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256" "structImg-noRelu-0p5-repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256" "structTok-0p5-repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256" "structTok-noRelu-0p5-repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256" "structImgByTok-0p5-repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256" "structImgByTok-noRelu-0p5-repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256" 
 # for exp_name in "repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256-tripmseTemp0p1" "repaLinear-0p5-sitb2-dinov2VitB-enc4-bs512-tripmseTemp0p05" "linear-sitb-dinov2-b-enc4/between_images-structCoeff_0.0" "repaLinear-0p5-sitb2-dinov2VitB-enc4-bs512"
