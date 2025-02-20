@@ -5,6 +5,14 @@ MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripsameTemp0p1 linear-
 CHECKPOINT_ITERS="0050000.pt 0100000.pt 0150000.pt 0200000.pt 0250000.pt 0300000.pt 0350000.pt" # 0400000.pt"
 # Compute this list using the utils find_experiment_paths -> convert_pylist_to_shlist functions! 
 for exp_name in $MODEL_ITERS
+do 
+    for fname in $CHECKPOINT_ITERS
+    do 
+        echo $exp_name $fname
+    done 
+done
+
+for exp_name in $MODEL_ITERS
 do
     # EXP_LOC="exps/${exp_name}"
     EXP_LOC="/weka/prior-default/georges/research/REPA/exps/${exp_name}"
