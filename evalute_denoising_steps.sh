@@ -14,7 +14,7 @@ do
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
             torchrun \
             --nnodes=1 \
-            --nproc_per_node=3 \
+            --nproc_per_node=8 \
             --master-port 29501 \
             generate.py \
             --model "${MODEL_NAME}" \
