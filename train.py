@@ -346,7 +346,7 @@ def main(args, exp_name):
     if accelerator.is_main_process:
         tracker_config = vars(copy.deepcopy(args))
         accelerator.init_trackers(
-            project_name="REPA", 
+            project_name=args.wandb_project, 
             config=tracker_config,
             init_kwargs={
                 "wandb": {"name": f"{exp_name}"}
@@ -492,6 +492,7 @@ def parse_args(input_args=None):
     parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--sampling-steps", type=int, default=10000)
     parser.add_argument("--resume-step", type=int, default=0)
+    parser.add_argument("--wandb-project", type=str, default="REPA")
 
     # model
     parser.add_argument("--model", type=str)
