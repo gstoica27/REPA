@@ -187,6 +187,8 @@ def create_experiment_name(args):
     coeff_str = str(args.denoising_temp).replace('.', 'p')
     exp_name += f"-{denoising_name}Temp{coeff_str}"
     
+    exp_name += f"-res{args.resolution}"
+    
     print(exp_name)
     return exp_name
 
