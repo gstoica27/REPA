@@ -18,7 +18,7 @@ done
 for exp_name in $MODEL_ITERS
 do
     # EXP_LOC="exps/${exp_name}"
-    EXP_LOC="/weka/prior-default/georges/research/REPA/exps/${exp_name}"
+    EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
     SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_50k/50_steps/${exp_name}"
         # for fname in "0050000.pt" "0100000.pt" "0150000.pt" "0200000.pt" "0250000.pt" "0300000.pt" "0350000.pt" "0400000.pt"
     for fname in $CHECKPOINT_ITERS
@@ -48,7 +48,7 @@ done
 for exp_name in $MODEL_ITERS
 do
     # EXP_LOC="exps/${exp_name}"
-    EXP_LOC="/weka/prior-default/georges/research/REPA/exps/${exp_name}"
+    EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
     SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_50k/250_steps/${exp_name}"
     # if [ ! -d "${SAVE_DIR}" ]; then
     for fname in $CHECKPOINT_ITERS
