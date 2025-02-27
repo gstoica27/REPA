@@ -3,9 +3,9 @@
 MODEL_NAME="SiT-XL/2"
 # MODEL_ITERS="repaLinear-0p5-sitb2-dinov2VitB-enc4-bs512 repaLinear-0p5-sitb2-dinov2VitB-enc4-bs512-tripmseTemp0p05 repaLinear-0p5-sitb2-dinov2VitB-enc4-bs1024 repaLinear-0p5-sitb2-dinov2VitB-enc4-bs1024-tripanyTemp0p1"
 MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05"
-CFG_BEGIN=4.25
-CFG_END=8.0
-CFG_STEP=0.25
+CFG_BEGIN=8.0
+CFG_END=20.0
+CFG_STEP=0.5
 
 for exp_name in $MODEL_ITERS
 do 
