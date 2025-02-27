@@ -24,24 +24,22 @@ do
     # if [ ! -d "${SAVE_DIR}" ]; then
     for cfg_scale in $(seq $CFG_BEGIN $CFG_STEP $CFG_END); do
         SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_100/250_steps/with_cfg/${exp_name}"
-        if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then  
-            torchrun \
-            --nnodes=1 \
-            --nproc_per_node=8 \
-            --master-port 29502 \
-            generate.py \
-            --model "${MODEL_NAME}" \
-            --num-fid-samples 100 \
-            --ckpt "${EXP_LOC}/checkpoints/0400000.pt" \
-            --path-type=linear \
-            --encoder-depth=8 \
-            --projector-embed-dims=768 \
-            --per-proc-batch-size=64 \
-            --mode=sde \
-            --num-steps=250 \
-            --cfg-scale=$cfg_scale \
-            --guidance-high=0.7 \
-            --sample-dir "${SAVE_DIR}"
-        fi
+        torchrun \
+        --nnodes=1 \
+        --nproc_per_node=8 \
+        --master-port 29502 \
+        generate.py \
+        --model "${MODEL_NAME}" \
+        --num-fid-samples 100 \
+        --ckpt "${EXP_LOC}/checkpoints/0400000.pt" \
+        --path-type=linear \
+        --encoder-depth=8 \
+        --projector-embed-dims=768 \
+        --per-proc-batch-size=64 \
+        --mode=sde \
+        --num-steps=250 \
+        --cfg-scale=$cfg_scale \
+        --guidance-high=0.7 \
+        --sample-dir "${SAVE_DIR}"
     done 
 done
