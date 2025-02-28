@@ -142,6 +142,7 @@ def main(args):
             n = samples_needed_this_gpu
         else:
             raise ValueError("samples_needed_this_gpu must be divisible by the per-GPU batch size or the rough_examples_per_class")
+        global_batch_size = n * dist.get_world_size()
         if rank == 0:
             print(f"Total number of images that will be sampled: {total_samples}")    
             print("Samples needed this GPU: ", samples_needed_this_gpu)
