@@ -133,7 +133,15 @@ def main(args):
         assert rough_examples_per_class % dist.get_world_size() == 0, "rough_examples_per_class must be divisible by world_size"
         total_samples = int(len(args.record_custom_classes) * rough_examples_per_class)
         samples_needed_this_gpu = int(total_samples // dist.get_world_size())
-        n = min(args.per_proc_batch_size, rough_examples_per_class) # it's possible that batch size is not a factor of total samples in the gpu
+        # Assign the actual batch size to be used for each GPU
+        if samples_needed_this_gpu % args.per_proc_batch_size == 0:
+            n = args.per_proc_batch_size
+        elif samples_needed_this_gpu % args.rough_examples_per_class == 0:
+            n = args.rough_examples_per_class
+        elif samples_needed_this_gpu <= args.per_proc_batch_size:
+            n = samples_needed_this_gpu
+        else:
+            raise ValueError("samples_needed_this_gpu must be divisible by the per-GPU batch size or the rough_examples_per_class")
         if rank == 0:
             print(f"Total number of images that will be sampled: {total_samples}")    
             print("Samples needed this GPU: ", samples_needed_this_gpu)
