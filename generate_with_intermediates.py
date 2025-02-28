@@ -23,6 +23,7 @@ import math
 import argparse
 from samplers import euler_sampler, euler_maruyama_sampler
 from utils import load_legacy_checkpoints, download_model
+import pdb
 
 def create_npz_from_sample_folder(sample_dir, num=50_000):
     """
@@ -40,6 +41,27 @@ def create_npz_from_sample_folder(sample_dir, num=50_000):
     print(f"Saved .npz file to {npz_path} [shape={samples.shape}].")
     return npz_path
 
+def create_npz_from_latents(sample_dir, latent_idxs, latent_samples, num=50_000):
+    """
+    Builds a single .npz file from a list of latents.
+    """
+    latents = []
+    for i in tqdm(range(num), desc="Building .npz file from latents"):
+        latents.append(latent_samples[latent_idxs.index(i)])
+    latents = np.stack(latents)
+    assert latents.shape == (num, latents.shape[1])
+    npz_path = f"{sample_dir}_latents.npz"
+    np.savez(npz_path, arr_0=latents)
+    print(f"Saved .npz file to {npz_path} [shape={latents.shape}].")
+    return npz_path
+
+def create_image_from_latents(vae, samples, latents_bias, latents_scale):
+    samples = vae.decode((samples -  latents_bias) / latents_scale).sample
+    samples = (samples + 1) / 2.
+    samples = torch.clamp(
+        255. * samples, 0, 255
+    ).permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
+    return samples
 
 def main(args):
     """
@@ -98,6 +120,10 @@ def main(args):
     if rank == 0:
         os.makedirs(sample_folder_dir, exist_ok=True)
         print(f"Saving .png samples at {sample_folder_dir}")
+        # args.save_latents:
+        #     latents_folder_dir = f"{args.sample_dir}/{folder_name}/latents"
+        # os.makedirs(latents_folder_dir, exist_ok=True)
+        # print(f"Saving latents at {latents_folder_dir}")
     dist.barrier()
 
     # Figure out how many samples we need to generate on each GPU and how many iterations we need to run:
@@ -132,31 +158,52 @@ def main(args):
             guidance_low=args.guidance_low,
             guidance_high=args.guidance_high,
             path_type=args.path_type,
+            record_intermediate_steps=args.record_intermediate_steps,
+            record_intermediate_steps_freq=args.record_intermediate_steps_freq,
         )
         with torch.no_grad():
             if args.mode == "sde":
-                samples = euler_maruyama_sampler(**sampling_kwargs).to(torch.float32)
+                if args.record_intermediate_steps:
+                    samples, intermediate_steps = euler_maruyama_sampler(**sampling_kwargs)
+                else:
+                    samples = euler_maruyama_sampler(**sampling_kwargs).to(torch.float32)
             elif args.mode == "ode":
-                samples = euler_sampler(**sampling_kwargs).to(torch.float32)
+                if args.record_intermediate_steps:
+                    samples, intermediate_steps = euler_sampler(**sampling_kwargs)
+                else:
+                    samples = euler_sampler(**sampling_kwargs).to(torch.float32)
             else:
                 raise NotImplementedError()
-
             latents_scale = torch.tensor(
                 [0.18215, 0.18215, 0.18215, 0.18215, ]
                 ).view(1, 4, 1, 1).to(device)
             latents_bias = -torch.tensor(
                 [0., 0., 0., 0.,]
                 ).view(1, 4, 1, 1).to(device)
+            
+            if args.record_intermediate_steps:
+                intermediate_images = [create_image_from_latents(vae, intermediate_step, latents_bias, latents_scale) for intermediate_step in intermediate_steps]
+                intermediate_samples = np.stack(intermediate_images, axis=0).transpose((1,0,2,3,4))
             samples = vae.decode((samples -  latents_bias) / latents_scale).sample
             samples = (samples + 1) / 2.
             samples = torch.clamp(
                 255. * samples, 0, 255
                 ).permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
-
             # Save samples to disk as individual .png files
             for i, sample in enumerate(samples):
                 index = i * dist.get_world_size() + rank + total
                 Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
+            if args.record_intermediate_steps:
+                # Save images from intermediate steps
+                for i, path_images in enumerate(intermediate_samples):
+                    index = i * dist.get_world_size() + rank + total
+                    save_dir = os.path.join(sample_folder_dir, "intermediate_steps", f"{index:06d}_path")
+                    os.makedirs(save_dir, exist_ok=True)
+                    for delta, image_in_path in enumerate(path_images):
+                        interval = (delta+1) * args.record_intermediate_steps_freq
+                        save_path = os.path.join(save_dir, f"step_{interval}.png")
+                        Image.fromarray(image_in_path).save(save_path)
+        
         total += global_batch_size
 
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
@@ -208,6 +255,8 @@ if __name__ == "__main__":
 
     # will be deprecated
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False) # only for ode
+    parser.add_argument("--record-intermediate-steps", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--record-intermediate-steps-freq", type=int, default=10)
 
 
     args = parser.parse_args()

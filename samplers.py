@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from copy import deepcopy
 
 
 def expand_t_like_x(t, x_cur):
@@ -53,6 +54,8 @@ def euler_sampler(
         guidance_low=0.0,
         guidance_high=1.0,
         path_type="linear", # not used, just for compatability
+        record_intermediate_steps=False,
+        record_intermediate_steps_freq=None,
         ):
     # setup conditioning
     if cfg_scale > 1.0:
@@ -62,6 +65,10 @@ def euler_sampler(
     x_next = latents.to(torch.float64)
     device = x_next.device
 
+    if record_intermediate_steps:
+        assert record_intermediate_steps_freq is not None
+        intermediates = []
+    
     with torch.no_grad():
         for i, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])):
             x_cur = x_next
@@ -98,7 +105,13 @@ def euler_sampler(
                     d_prime_cond, d_prime_uncond = d_prime.chunk(2)
                     d_prime = d_prime_uncond + cfg_scale * (d_prime_cond - d_prime_uncond)
                 x_next = x_cur + (t_next - t_cur) * (0.5 * d_cur + 0.5 * d_prime)
-                
+            if record_intermediate_steps and (i + 1) % record_intermediate_steps_freq == 0:
+                intermediates.append(deepcopy(x_next.detach()).to(torch.float32))
+    # last step
+    if record_intermediate_steps:
+        intermediates.append(deepcopy(x_next.detach()).to(torch.float32))
+        return x_next.to(torch.float32), intermediates
+    
     return x_next
 
 
@@ -112,11 +125,13 @@ def euler_maruyama_sampler(
         guidance_low=0.0,
         guidance_high=1.0,
         path_type="linear",
+        record_intermediate_steps=False,
+        record_intermediate_steps_freq=None,
         ):
     # setup conditioning
     if cfg_scale > 1.0:
         y_null = torch.tensor([1000] * y.size(0), device=y.device)
-            
+    
     _dtype = latents.dtype
     
     t_steps = torch.linspace(1., 0.04, num_steps, dtype=torch.float64)
@@ -124,6 +139,10 @@ def euler_maruyama_sampler(
     x_next = latents.to(torch.float64)
     device = x_next.device
 
+    if record_intermediate_steps:
+        assert record_intermediate_steps_freq is not None
+        intermediates = []
+    
     with torch.no_grad():
         for i, (t_cur, t_next) in enumerate(zip(t_steps[:-2], t_steps[1:-1])):
             dt = t_next - t_cur
@@ -151,6 +170,9 @@ def euler_maruyama_sampler(
                 d_cur = d_cur_uncond + cfg_scale * (d_cur_cond - d_cur_uncond)
 
             x_next =  x_cur + d_cur * dt + torch.sqrt(diffusion) * deps
+            
+            if record_intermediate_steps and (i + 1) % record_intermediate_steps_freq == 0:
+                intermediates.append(deepcopy(x_next.detach().to(torch.float32)))
     
     # last step
     t_cur, t_next = t_steps[-2], t_steps[-1]
@@ -179,5 +201,8 @@ def euler_maruyama_sampler(
         d_cur = d_cur_uncond + cfg_scale * (d_cur_cond - d_cur_uncond)
 
     mean_x = x_cur + dt * d_cur
-                    
+    if record_intermediate_steps:
+        intermediates.append(deepcopy(mean_x.detach().to(torch.float32)))
+        return mean_x.to(torch.float32), intermediates
+    
     return mean_x
