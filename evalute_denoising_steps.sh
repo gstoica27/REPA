@@ -29,7 +29,8 @@ do
             --num-steps=$steps \
             --cfg-scale=1.0 \
             --guidance-high=0.0 \
-            --sample-dir "${SAVE_DIR}"
+            --sample-dir "${SAVE_DIR}" \
+            --save-latents
         fi
     done 
 done

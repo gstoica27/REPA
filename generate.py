@@ -23,6 +23,7 @@ import math
 import argparse
 from samplers import euler_sampler, euler_maruyama_sampler
 from utils import load_legacy_checkpoints, download_model
+import pdb
 
 def create_npz_from_sample_folder(sample_dir, num=50_000):
     """
@@ -40,6 +41,19 @@ def create_npz_from_sample_folder(sample_dir, num=50_000):
     print(f"Saved .npz file to {npz_path} [shape={samples.shape}].")
     return npz_path
 
+def create_npz_from_latents(sample_dir, latent_idxs, latent_samples, num=50_000):
+    """
+    Builds a single .npz file from a list of latents.
+    """
+    latents = []
+    for i in tqdm(range(num), desc="Building .npz file from latents"):
+        latents.append(latent_samples[latent_idxs.index(i)])
+    latents = np.stack(latents)
+    assert latents.shape == (num, latents.shape[1])
+    npz_path = f"{sample_dir}_latents.npz"
+    np.savez(npz_path, arr_0=latents)
+    print(f"Saved .npz file to {npz_path} [shape={latents.shape}].")
+    return npz_path
 
 def main(args):
     """
@@ -98,6 +112,10 @@ def main(args):
     if rank == 0:
         os.makedirs(sample_folder_dir, exist_ok=True)
         print(f"Saving .png samples at {sample_folder_dir}")
+        # args.save_latents:
+        #     latents_folder_dir = f"{args.sample_dir}/{folder_name}/latents"
+        # os.makedirs(latents_folder_dir, exist_ok=True)
+        # print(f"Saving latents at {latents_folder_dir}")
     dist.barrier()
 
     # Figure out how many samples we need to generate on each GPU and how many iterations we need to run:
@@ -116,6 +134,11 @@ def main(args):
     pbar = range(iterations)
     pbar = tqdm(pbar) if rank == 0 else pbar
     total = 0
+    
+    if args.save_latents:
+        latent_idxs = []
+        latent_samples = []
+        
     for _ in pbar:
         # Sample inputs:
         z = torch.randn(n, model.in_channels, latent_size, latent_size, device=device)
@@ -140,29 +163,38 @@ def main(args):
                 samples = euler_sampler(**sampling_kwargs).to(torch.float32)
             else:
                 raise NotImplementedError()
-
             latents_scale = torch.tensor(
                 [0.18215, 0.18215, 0.18215, 0.18215, ]
                 ).view(1, 4, 1, 1).to(device)
             latents_bias = -torch.tensor(
                 [0., 0., 0., 0.,]
                 ).view(1, 4, 1, 1).to(device)
+            
+            if args.save_latents:
+                flat_samples = ((samples - latents_bias) / latents_scale).flatten(1).cpu()
+                
             samples = vae.decode((samples -  latents_bias) / latents_scale).sample
             samples = (samples + 1) / 2.
             samples = torch.clamp(
                 255. * samples, 0, 255
                 ).permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
-
+            assert len(samples) == len(flat_samples)
             # Save samples to disk as individual .png files
-            for i, sample in enumerate(samples):
+            for i, (sample, flat_latent) in enumerate(zip(samples, flat_samples)):
                 index = i * dist.get_world_size() + rank + total
                 Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
+                
+                latent_idxs.append(index)
+                latent_samples.append(flat_latent)
+        
         total += global_batch_size
 
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
     dist.barrier()
     if rank == 0:
         create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
+        if args.save_latents:
+            create_npz_from_latents(sample_folder_dir, latent_idxs, latent_samples, args.num_fid_samples)
         print("Done.")
     dist.barrier()
     dist.destroy_process_group()
@@ -208,6 +240,7 @@ if __name__ == "__main__":
 
     # will be deprecated
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False) # only for ode
+    parser.add_argument("--save-latents", action=argparse.BooleanOptionalAction, default=False) # only for ode
 
 
     args = parser.parse_args()
