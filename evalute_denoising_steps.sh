@@ -10,7 +10,7 @@ for steps in $STEPS
 do
     for exp_name in $MODEL_ITERS
         do
-        EXP_LOC="/weka/prior-default/georges/research/REPA/exps/${exp_name}"
+        EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
         SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_50k/${steps}_steps/${exp_name}"
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
             torchrun \
