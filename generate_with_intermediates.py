@@ -134,8 +134,10 @@ def main(args):
         total_samples = int(len(args.record_custom_classes) * rough_examples_per_class)
         samples_needed_this_gpu = int(total_samples // dist.get_world_size())
         n = min(args.per_proc_batch_size, rough_examples_per_class) # it's possible that batch size is not a factor of total samples in the gpu
-        print("Samples needed this GPU: ", samples_needed_this_gpu)
-        print("N: ", n)
+        if rank == 0:
+            print(f"Total number of images that will be sampled: {total_samples}")    
+            print("Samples needed this GPU: ", samples_needed_this_gpu)
+            print("N: ", n)
         assert samples_needed_this_gpu % n == 0, "samples_needed_this_gpu must be divisible by the per-GPU batch size"
         iterations = int(samples_needed_this_gpu // n)
     else:
