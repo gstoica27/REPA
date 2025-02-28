@@ -17,7 +17,7 @@ do
             --nnodes=1 \
             --nproc_per_node=8 \
             --master-port 29501 \
-            generate_with_samplers.py \
+            generate_with_intermediates.py \
             --model "${MODEL_NAME}" \
             --num-fid-samples 1000 \
             --ckpt "${EXP_LOC}/checkpoints/${CHECKPOINT_FNAME}" \
