@@ -24,6 +24,7 @@ import argparse
 from samplers import euler_sampler, euler_maruyama_sampler
 from utils import load_legacy_checkpoints, download_model
 import pdb
+import random
 
 def create_npz_from_sample_folder(sample_dir, num=50_000):
     """
@@ -78,6 +79,8 @@ def main(args):
     seed = args.global_seed * dist.get_world_size() + rank
     torch.manual_seed(seed)
     torch.cuda.set_device(device)
+    np.random.seed(seed)
+    random.seed(seed)
     print(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
 
     # Load model:
