@@ -11,7 +11,7 @@ do
     for exp_name in $MODEL_ITERS
         do
         EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
-        SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_tmp/fid_50k/varying_steps/${steps}_steps/${exp_name}"
+        SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_analysis/fid_50k/varying_steps/${steps}_steps/${exp_name}"
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
             torchrun \
             --nnodes=1 \
