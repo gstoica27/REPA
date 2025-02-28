@@ -127,25 +127,40 @@ def main(args):
     dist.barrier()
 
     # Figure out how many samples we need to generate on each GPU and how many iterations we need to run:
-    n = args.per_proc_batch_size
-    global_batch_size = n * dist.get_world_size()
-    # To make things evenly-divisible, we'll sample a bit more than we need and then discard the extra samples:
-    total_samples = int(math.ceil(args.num_fid_samples / global_batch_size) * global_batch_size)
-    if rank == 0:
-        print(f"Total number of images that will be sampled: {total_samples}")
-        print(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
-        print(f"projector Parameters: {sum(p.numel() for p in model.projectors.parameters()):,}")
-    assert total_samples % dist.get_world_size() == 0, "total_samples must be divisible by world_size"
-    samples_needed_this_gpu = int(total_samples // dist.get_world_size())
-    assert samples_needed_this_gpu % n == 0, "samples_needed_this_gpu must be divisible by the per-GPU batch size"
-    iterations = int(samples_needed_this_gpu // n)
+    
+    if args.record_custom_classes is not None and len(args.record_custom_classes) > 0:
+        rough_examples_per_class = args.rough_examples_per_class if args.rough_examples_per_class is not None else args.per_proc_batch_size
+        assert rough_examples_per_class % dist.get_world_size() == 0, "rough_examples_per_class must be divisible by world_size"
+        total_samples = int(len(args.record_custom_classes) * rough_examples_per_class)
+        samples_needed_this_gpu = int(total_samples // dist.get_world_size())
+        n = min(args.per_proc_batch_size, rough_examples_per_class) # it's possible that batch size is not a factor of total samples in the gpu
+        assert samples_needed_this_gpu % n == 0, "samples_needed_this_gpu must be divisible by the per-GPU batch size"
+        iterations = int(samples_needed_this_gpu // n)
+    else:
+        n = args.per_proc_batch_size
+        global_batch_size = n * dist.get_world_size()
+        # To make things evenly-divisible, we'll sample a bit more than we need and then discard the extra samples:
+        total_samples = int(math.ceil(args.num_fid_samples / global_batch_size) * global_batch_size)
+        if rank == 0:
+            print(f"Total number of images that will be sampled: {total_samples}")
+            print(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
+            print(f"projector Parameters: {sum(p.numel() for p in model.projectors.parameters()):,}")
+        assert total_samples % dist.get_world_size() == 0, "total_samples must be divisible by world_size"
+        samples_needed_this_gpu = int(total_samples // dist.get_world_size())
+        assert samples_needed_this_gpu % n == 0, "samples_needed_this_gpu must be divisible by the per-GPU batch size"
+        iterations = int(samples_needed_this_gpu // n)
+        
     pbar = range(iterations)
     pbar = tqdm(pbar) if rank == 0 else pbar
     total = 0
     for _ in pbar:
         # Sample inputs:
         z = torch.randn(n, model.in_channels, latent_size, latent_size, device=device)
-        y = torch.randint(0, args.num_classes, (n,), device=device)
+        
+        if args.record_custom_classes is not None and len(args.record_custom_classes) > 0:
+            y = torch.tensor(np.random.choice(args.record_custom_classes, n, replace=True), device=device)
+        else:
+            y = torch.randint(0, args.num_classes, (n,), device=device)
 
         # Sample images:
         sampling_kwargs = dict(
@@ -193,11 +208,12 @@ def main(args):
             for i, sample in enumerate(samples):
                 index = i * dist.get_world_size() + rank + total
                 Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
+                
             if args.record_intermediate_steps:
                 # Save images from intermediate steps
                 for i, path_images in enumerate(intermediate_samples):
                     index = i * dist.get_world_size() + rank + total
-                    save_dir = os.path.join(sample_folder_dir, "intermediate_steps", f"{index:06d}_path")
+                    save_dir = os.path.join(sample_folder_dir, "intermediate_steps", f"class_{y[index].item()}", f"{index:06d}_path")
                     os.makedirs(save_dir, exist_ok=True)
                     for delta, image_in_path in enumerate(path_images):
                         interval = (delta+1) * args.record_intermediate_steps_freq
@@ -255,9 +271,12 @@ if __name__ == "__main__":
 
     # will be deprecated
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False) # only for ode
+    
+    # Instructions for recording intermediate path trajectories
     parser.add_argument("--record-intermediate-steps", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--record-intermediate-steps-freq", type=int, default=10)
-
+    parser.add_argument("--record-custom-classes", type=int, default=None, nargs='+')
+    parser.add_argument("--rough-examples-per-class", type=int, default=32)
 
     args = parser.parse_args()
     main(args)
