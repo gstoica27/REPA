@@ -225,7 +225,7 @@ def main(args):
                 # Save images from intermediate steps
                 for i, path_images in enumerate(intermediate_samples):
                     index = i * dist.get_world_size() + rank + total
-                    save_dir = os.path.join(sample_folder_dir, "intermediate_steps", f"class_{y[index].item()}", f"{index:06d}_path")
+                    save_dir = os.path.join(sample_folder_dir, "intermediate_steps", f"class_{y[i].item()}", f"{index:06d}_path")
                     os.makedirs(save_dir, exist_ok=True)
                     for delta, image_in_path in enumerate(path_images):
                         interval = (delta+1) * args.record_intermediate_steps_freq
