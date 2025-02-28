@@ -1,7 +1,7 @@
 #!/bin/bash
 MODEL_NAME="SiT-XL/2"
-# MODEL_ITERS="linear-dinov2-b-enc8"
-MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05"
+MODEL_ITERS="linear-dinov2-b-enc8"
+# MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05"
 CHECKPOINT_FNAME="0400000.pt"
 STEPS="5 10 20 30 50 100 150 200 250 300 400 500 600 700 800 900 1000 1250 1500 1750 2000"
 
