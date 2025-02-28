@@ -3,7 +3,7 @@ MODEL_NAME="SiT-XL/2"
 MODEL_ITERS="linear-dinov2-b-enc8"
 # MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05"
 CHECKPOINT_FNAME="0400000.pt"
-STEPS="250"
+STEPS="50"
 
 
 for steps in $STEPS
