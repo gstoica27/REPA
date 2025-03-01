@@ -175,6 +175,8 @@ def main(args):
     pbar = range(iterations)
     pbar = tqdm(pbar) if rank == 0 else pbar
     total = 0
+    save_dir = os.path.join(sample_folder_dir, f"{args.trajectory_structure_type}")
+    os.makedirs(save_dir, exist_ok=True)
     for _ in pbar:
         # Sample inputs:
         z = torch.randn(n, model.in_channels, latent_size, latent_size, device=device)
@@ -262,22 +264,20 @@ def main(args):
                 similarities = similarities.cpu()
                 for i, sample_sims in enumerate(similarities):
                     index = i * dist.get_world_size() + rank + total
-                    print(f"Index: {index} | Rank: {rank} | Total: {total} | i: {i} | world size: {dist.get_world_size()}")
-                    print("INDEX IS : ", index)
-                    print("I is : ", i)
-                    
-                    trajectory_idxs[index] = sample_sims
+                    # print(f"Index: {index} | Rank: {rank} | Total: {total} | i: {i} | world size: {dist.get_world_size()}")
+                    np.savez(os.path.join(save_dir, f"{index}.npz"), arr_0=sample_sims)
+                    # trajectory_idxs[index] = sample_sims
         
         total += global_batch_size
 
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
     dist.barrier()
     if rank == 0:
-        print("Length of trajectory: ", len(trajectory_idxs))
-        print("Trajectory keys: ", list(trajectory_idxs.keys()))
-        print("Number of samples: ", args.num_fid_samples)
-        selected_samples = torch.stack([trajectory_idxs[i] for i in range(args.num_fid_samples)]).numpy()
-        np.savez(f"{sample_folder_dir}_trajectory_{args.trajectory_structure_type}.npz", arr_0=selected_samples)
+        # print("Length of trajectory: ", len(trajectory_idxs))
+        # print("Trajectory keys: ", list(trajectory_idxs.keys()))
+        # print("Number of samples: ", args.num_fid_samples)
+        # selected_samples = torch.stack([trajectory_idxs[i] for i in range(args.num_fid_samples)]).numpy()
+        # np.savez(f"{sample_folder_dir}_trajectory_{args.trajectory_structure_type}.npz", arr_0=selected_samples)
     #     create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
         print("Done.")
     dist.barrier()
