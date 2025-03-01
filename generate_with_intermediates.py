@@ -262,7 +262,7 @@ def main(args):
                 similarities = similarities.cpu()
                 for i, sample_sims in enumerate(similarities):
                     index = i * dist.get_world_size() + rank + total
-                    print(f"Index: {index} | Rank: {rank} | Total: {total} | i: {i}")
+                    print(f"Index: {index} | Rank: {rank} | Total: {total} | i: {i} | world size: {dist.get_world_size()}")
                     print("INDEX IS : ", index)
                     print("I is : ", i)
                     
