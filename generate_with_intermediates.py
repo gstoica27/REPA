@@ -26,6 +26,7 @@ from utils import load_legacy_checkpoints, download_model
 import pdb
 import random
 from imnet1k_classes import IMNET_CLS_DICT
+import torch.nn.functional as F
 
 def create_npz_from_sample_folder(sample_dir, num=50_000):
     """
@@ -166,6 +167,9 @@ def main(args):
         samples_needed_this_gpu = int(total_samples // dist.get_world_size())
         assert samples_needed_this_gpu % n == 0, "samples_needed_this_gpu must be divisible by the per-GPU batch size"
         iterations = int(samples_needed_this_gpu // n)
+    
+    if args.record_trajectory_structure:
+        trajectory_idxs = {}
         
     pbar = range(iterations)
     pbar = tqdm(pbar) if rank == 0 else pbar
@@ -192,18 +196,15 @@ def main(args):
             path_type=args.path_type,
             record_intermediate_steps=args.record_intermediate_steps,
             record_intermediate_steps_freq=args.record_intermediate_steps_freq,
+            record_trajectory_structure=args.record_trajectory_structure,
+            trajectory_structure_type=args.trajectory_structure_type,
         )
         with torch.no_grad():
             if args.mode == "sde":
-                if args.record_intermediate_steps:
-                    samples, intermediate_steps = euler_maruyama_sampler(**sampling_kwargs)
-                else:
-                    samples = euler_maruyama_sampler(**sampling_kwargs).to(torch.float32)
+                samples_dict = euler_maruyama_sampler(**sampling_kwargs)
             elif args.mode == "ode":
-                if args.record_intermediate_steps:
-                    samples, intermediate_steps = euler_sampler(**sampling_kwargs)
-                else:
-                    samples = euler_sampler(**sampling_kwargs).to(torch.float32)
+                    # samples, intermediate_steps = euler_sampler(**sampling_kwargs)
+                samples_dict = euler_sampler(**sampling_kwargs)
             else:
                 raise NotImplementedError()
             latents_scale = torch.tensor(
@@ -213,7 +214,9 @@ def main(args):
                 [0., 0., 0., 0.,]
                 ).view(1, 4, 1, 1).to(device)
             
+            samples = samples_dict['samples'].to(torch.float32)
             if args.record_intermediate_steps:
+                intermediate_steps = samples_dict['intermediate_steps']
                 intermediate_images = [create_image_from_latents(vae, intermediate_step, latents_bias, latents_scale) for intermediate_step in intermediate_steps]
                 intermediate_samples = np.stack(intermediate_images, axis=0).transpose((1,0,2,3,4))
             samples = vae.decode((samples -  latents_bias) / latents_scale).sample
@@ -242,16 +245,34 @@ def main(args):
                         interval = (delta+1) * args.record_intermediate_steps_freq
                         save_path = os.path.join(intermediates_save_dir, f"step_{interval}.png")
                         Image.fromarray(image_in_path).save(save_path)
-            
-            
+
+            if args.record_trajectory_structure:
+                trajectory_vectors = F.normalize(samples_dict['trajectory_vectors'].transpose(1, 0).flatten(2), dim=-1)
+                if args.trajectory_structure_type == "segment_cosine":
+                    A = trajectory_vectors[:,:-1,:]
+                    B = trajectory_vectors[:, 1:,:]
+                    similarities = (A * B).sum(dim=-1)
+                elif args.trajectory_structure_type == "source_cosine":
+                    similarities = torch.bmm(trajectory_vectors, trajectory_vectors.transpose(1, 2))
+                    similarities.diagonal(dim1=1, dim2=2).fill_(0) # zero-out the identical samples
+                else:
+                    raise ValueError("Invalid trajectory_structure_type")
+                
+                similarities = similarities.cpu()
+                for i, sample_sims in enumerate(similarities):
+                    index = i + dist.get_world_size() * rank + total
+                    trajectory_idxs[index] = sample_sims
         
         total += global_batch_size
 
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
     dist.barrier()
-    # if rank == 0:
+    if rank == 0:
+        pdb.set_trace()
+        selected_samples = torch.stack([trajectory_idxs[i] for i in range(args.num_fid_samples)]).numpy()
+        np.savez(f"{sample_folder_dir}_trajectory_{args.trajectory_structure_type}.npz", arr_0=selected_samples)
     #     create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
-    #     print("Done.")
+        print("Done.")
     dist.barrier()
     dist.destroy_process_group()
 
@@ -302,6 +323,10 @@ if __name__ == "__main__":
     parser.add_argument("--record-intermediate-steps-freq", type=int, default=10)
     parser.add_argument("--record-custom-classes", type=int, default=None, nargs='+')
     parser.add_argument("--rough-examples-per-class", type=int, default=32)
+    
+    # Instructions for computing cosine similarities
+    parser.add_argument("--record-trajectory-structure", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--trajectory-structure-type", type=str, default=None, choices=["segment_cosine", "source_cosine", None])
 
     args = parser.parse_args()
     main(args)
