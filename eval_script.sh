@@ -23,7 +23,7 @@ do
     SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_50k/50_steps/${exp_name}"
         # for fname in "0050000.pt" "0100000.pt" "0150000.pt" "0200000.pt" "0250000.pt" "0300000.pt" "0350000.pt" "0400000.pt"
     for fname in $CHECKPOINT_ITERS
-        dogit 
+        do
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
             torchrun \
             --nnodes=1 \
