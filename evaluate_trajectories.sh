@@ -32,7 +32,7 @@ do
                 --cfg-scale=1.0 \
                 --guidance-high=0.0 \
                 --sample-dir "${SAVE_DIR}" \
-                -record-trajectory-structure \
+                --record-trajectory-structure \
                 --trajectory-structure-type $trajectory_structure_type
             fi
         done
