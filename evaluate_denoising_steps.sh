@@ -32,8 +32,8 @@ do
             --sample-dir "${SAVE_DIR}" \
             --record-intermediate-steps \
             --record-intermediate-steps-freq 10 \
-            --record-custom-classes 153 88 2 417 933 555 \
-            --rough-examples-per-class 32
+            --record-custom-classes 153 88 2 417 933 555 932 385 386 294 33 207 250 387 402 620 812 429 388 360 291 89 928 973 302 340 511 609 878 919 888 698\
+            --rough-examples-per-class 64
         fi
     done 
 done

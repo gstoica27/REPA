@@ -25,6 +25,7 @@ from samplers import euler_sampler, euler_maruyama_sampler
 from utils import load_legacy_checkpoints, download_model
 import pdb
 import random
+from imnet1k_classes import IMNET_CLS_DICT
 
 def create_npz_from_sample_folder(sample_dir, num=50_000):
     """
@@ -221,28 +222,36 @@ def main(args):
                 255. * samples, 0, 255
                 ).permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
             # Save samples to disk as individual .png files
-            for i, sample in enumerate(samples):
-                index = i * dist.get_world_size() + rank + total
-                Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
+            # for i, sample in enumerate(samples):
+            #     index = i * dist.get_world_size() + rank + total
+            #     Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
                 
             if args.record_intermediate_steps:
                 # Save images from intermediate steps
-                for i, path_images in enumerate(intermediate_samples):
+                pdb.set_trace()
+                for i, (final_sample, path_images) in enumerate(zip(samples, intermediate_samples)):
                     index = i * dist.get_world_size() + rank + total
-                    save_dir = os.path.join(sample_folder_dir, "intermediate_steps", f"class_{y[i].item()}", f"{index:06d}_path")
-                    os.makedirs(save_dir, exist_ok=True)
+                    cls_id = y[i].item()
+                    cls_name = IMNET_CLS_DICT[cls_id]
+                    save_dir = os.path.join(sample_folder_dir, "intermediate_steps", cls_name)
+                    Image.fromarray(final_sample).save(f"{save_dir}/{index:06d}.png")
+                    
+                    intermediates_save_dir = os.path.join(save_dir, f"{index:06d}_path")
+                    os.makedirs(intermediates_save_dir, exist_ok=True)
                     for delta, image_in_path in enumerate(path_images):
                         interval = (delta+1) * args.record_intermediate_steps_freq
                         save_path = os.path.join(save_dir, f"step_{interval}.png")
                         Image.fromarray(image_in_path).save(save_path)
+            
+            
         
         total += global_batch_size
 
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
     dist.barrier()
-    if rank == 0:
-        create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
-        print("Done.")
+    # if rank == 0:
+    #     create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
+    #     print("Done.")
     dist.barrier()
     dist.destroy_process_group()
 
