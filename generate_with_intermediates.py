@@ -77,6 +77,7 @@ def main(args):
     # Setup DDP:cd
     dist.init_process_group("nccl")
     rank = dist.get_rank()
+    print("RANK: ", rank)
     device = rank % torch.cuda.device_count()
     seed = args.global_seed * dist.get_world_size() + rank
     torch.manual_seed(seed)
