@@ -240,7 +240,7 @@ def main(args):
                     os.makedirs(intermediates_save_dir, exist_ok=True)
                     for delta, image_in_path in enumerate(path_images):
                         interval = (delta+1) * args.record_intermediate_steps_freq
-                        save_path = os.path.join(save_dir, f"step_{interval}.png")
+                        save_path = os.path.join(intermediates_save_dir, f"step_{interval}.png")
                         Image.fromarray(image_in_path).save(save_path)
             
             
