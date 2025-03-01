@@ -270,7 +270,7 @@ def main(args):
     if rank == 0:
         print("Length of trajectory: ", len(trajectory_idxs))
         print("Trajectory keys: ", list(trajectory_idxs.keys()))
-        print("Number of samples: ", arg.num_fid_samples)
+        print("Number of samples: ", args.num_fid_samples)
         selected_samples = torch.stack([trajectory_idxs[i] for i in range(args.num_fid_samples)]).numpy()
         np.savez(f"{sample_folder_dir}_trajectory_{args.trajectory_structure_type}.npz", arr_0=selected_samples)
     #     create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
