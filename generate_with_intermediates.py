@@ -233,6 +233,7 @@ def main(args):
                     cls_id = y[i].item()
                     cls_name = IMNET_CLS_DICT[cls_id]
                     save_dir = os.path.join(sample_folder_dir, "intermediate_steps", cls_name)
+                    os.makedirs(save_dir, exist_ok=True)
                     Image.fromarray(final_sample).save(f"{save_dir}/{index:06d}.png")
                     
                     intermediates_save_dir = os.path.join(save_dir, f"{index:06d}_path")
