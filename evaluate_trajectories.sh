@@ -12,7 +12,7 @@ do
         do
         EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
         SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_analysis/${steps}_steps/${exp_name}"
-        for trajector_structure_type in $TRAJECTORY_STRUCTURE_TYPES 
+        for trajectory_structure_type in $TRAJECTORY_STRUCTURE_TYPES 
         do
             if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
                 torchrun \
@@ -33,7 +33,7 @@ do
                 --guidance-high=0.0 \
                 --sample-dir "${SAVE_DIR}" \
                 -record-trajectory-structure \
-                --trajectory-structure-type $TRAJECTORY_STRUCTURE_TYPE
+                --trajectory-structure-type $trajectory_structure_type
             fi
         done
     done 
