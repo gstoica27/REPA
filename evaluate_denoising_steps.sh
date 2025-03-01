@@ -1,6 +1,7 @@
 #!/bin/bash
 MODEL_NAME="SiT-XL/2"
-MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05 linear-dinov2-b-enc8"
+# MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05 linear-dinov2-b-enc8"
+MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs512-tripanyTemp0p05 repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-meanTemp0p0-res512"
 CHECKPOINT_FNAME="0400000.pt"
 STEPS="50"
 
@@ -10,7 +11,7 @@ do
     for exp_name in $MODEL_ITERS
         do
         EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
-        SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_analysis/${steps}_steps/${exp_name}"
+        SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_analysis512/${steps}_steps/${exp_name}"
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
             torchrun \
             --nnodes=1 \
@@ -31,8 +32,9 @@ do
             --sample-dir "${SAVE_DIR}" \
             --record-intermediate-steps \
             --record-intermediate-steps-freq 10 \
-            --record-custom-classes 153 88 2 417 933 555 932 385 386 294 33 207 250 387 402 620 812 429 388 360 291 89 928 973 302 340 511 609 878 919 888 698\
-            --rough-examples-per-class 64
+            --record-custom-classes 153 88 2 417 933 555 932 385 386 294 33 207 250 387 402 620 812 429 388 360 291 89 928 973 302 340 511 609 878 919 888 698 866 576 547 13 14 18 17 31 96 145 148 \
+            --rough-examples-per-class 128 \
+            --resolution 512
         fi
     done 
 done
