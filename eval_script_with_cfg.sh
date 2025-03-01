@@ -18,8 +18,8 @@ done
 for exp_name in $MODEL_ITERS
 do
     # EXP_LOC="exps/${exp_name}"
-    EXP_LOC="/data/xiangf/REPA/exps2/${exp_name}"
-    SAVE_DIR="/data/xiangf/REPA/samples/fid_50k/50_steps/with_cfg/${exp_name}"
+    EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
+    SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_xiangf/fid_50k/"$3"_steps/with_cfg_"$1"_"$2"//${exp_name}"
     for fname in $CHECKPOINT_ITERS
         do
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
@@ -39,36 +39,6 @@ do
             --num-steps=$3 \
             --cfg-scale=$1 \
             --guidance-high=$2 \
-            --sample-dir "${SAVE_DIR}"
-        fi
-    done 
-done
-
-for exp_name in $MODEL_ITERS
-do
-    # EXP_LOC="exps/${exp_name}"
-    EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
-    SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_50k/250_steps/with_cfg//${exp_name}"
-    # if [ ! -d "${SAVE_DIR}" ]; then
-    for fname in $CHECKPOINT_ITERS
-        do
-        if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then  
-            torchrun \
-            --nnodes=1 \
-            --nproc_per_node=8 \
-            --master-port 29502 \
-            generate.py \
-            --model "${MODEL_NAME}" \
-            --num-fid-samples 50000 \
-            --ckpt "${EXP_LOC}/checkpoints/${fname}" \
-            --path-type=linear \
-            --encoder-depth=8 \
-            --projector-embed-dims=768 \
-            --per-proc-batch-size=64 \
-            --mode=sde \
-            --num-steps=250 \
-            --cfg-scale=1.8 \
-            --guidance-high=0.7 \
             --sample-dir "${SAVE_DIR}"
         fi
     done 
