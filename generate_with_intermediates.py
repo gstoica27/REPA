@@ -228,7 +228,6 @@ def main(args):
                 
             if args.record_intermediate_steps:
                 # Save images from intermediate steps
-                pdb.set_trace()
                 for i, (final_sample, path_images) in enumerate(zip(samples, intermediate_samples)):
                     index = i * dist.get_world_size() + rank + total
                     cls_id = y[i].item()
