@@ -135,9 +135,9 @@ def main(args):
         )
         with torch.no_grad():
             if args.mode == "sde":
-                samples = euler_maruyama_sampler(**sampling_kwargs).to(torch.float32)
+                samples = euler_maruyama_sampler(**sampling_kwargs)["samples"].to(torch.float32)
             elif args.mode == "ode":
-                samples = euler_sampler(**sampling_kwargs).to(torch.float32)
+                samples = euler_sampler(**sampling_kwargs)["samples"].to(torch.float32)
             else:
                 raise NotImplementedError()
 
