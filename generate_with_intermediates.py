@@ -268,7 +268,6 @@ def main(args):
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
     dist.barrier()
     if rank == 0:
-        pdb.set_trace()
         selected_samples = torch.stack([trajectory_idxs[i] for i in range(args.num_fid_samples)]).numpy()
         np.savez(f"{sample_folder_dir}_trajectory_{args.trajectory_structure_type}.npz", arr_0=selected_samples)
     #     create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
