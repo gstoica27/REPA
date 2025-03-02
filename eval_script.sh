@@ -1,7 +1,7 @@
 #!/bin/bash
 MODEL_NAME="SiT-B/2"
 # MODEL_NAME="SiT-XL/2"
-MODEL_ITERS="inear-sitb-dinov2-b-enc4/between_images-structCoeff_0.5 repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256-tripmseTemp0p5"
+MODEL_ITERS="linear-sitb-dinov2-b-enc4/between_images-structCoeff_0.5 repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256-tripmseTemp0p5"
 # MODEL_ITERS="sitxl2-vanilla-bs256-meanTemp0p0-res256 sitxl2-vanilla-bs256-tripanyTemp0p05-res256"
 CHECKPOINT_ITERS="0050000.pt 0100000.pt 0150000.pt 0200000.pt 0250000.pt 0300000.pt 0350000.pt 0400000.pt"
 # MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs512-meanTemp0p0-res256 repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs512-tripanyTemp0p05-res256"
@@ -50,7 +50,7 @@ done
 for exp_name in $MODEL_ITERS
 do
     # EXP_LOC="exps/${exp_name}"
-    EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
+    EXP_LOC="/weka/prior-default/georges/research/REPA/exps/${exp_name}"
     SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_50k/250_steps/${exp_name}"
     # if [ ! -d "${SAVE_DIR}" ]; then
     for fname in $CHECKPOINT_ITERS
