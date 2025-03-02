@@ -1,7 +1,7 @@
 #!/bin/bash
-MODEL_NAME="SiT-B/2"
-# MODEL_NAME="SiT-XL/2"
-MODEL_ITERS="inear-sitb-dinov2-b-enc8/between_images-structCoeff_0.5 "
+# MODEL_NAME="SiT-B/2"
+MODEL_NAME="SiT-XL/2"
+# MODEL_ITERS="inear-sitb-dinov2-b-enc8/between_images-structCoeff_0.5 "
 # MODEL_ITERS="sitxl2-vanilla-bs256-meanTemp0p0-res256 sitxl2-vanilla-bs256-tripanyTemp0p05-res256"
 # CHECKPOINT_ITERS="0050000.pt 0100000.pt 0150000.pt 0200000.pt 0250000.pt 0300000.pt 0350000.pt 0400000.pt"
 MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs512-meanTemp0p0-res256 repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs512-tripanyTemp0p05-res256"
