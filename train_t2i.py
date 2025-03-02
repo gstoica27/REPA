@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from collections import OrderedDict
 import json
+import pdb
 
 import numpy as np
 import torch
@@ -113,11 +114,57 @@ def requires_grad(model, flag=True):
         p.requires_grad = flag
 
 
+def create_experiment_name(args):
+    """
+    Create a unique experiment name based on the hyperparameters.
+    e.g., structPIBT-linear-sitb-dinov2-b-enc4
+    """
+    exp_name = "txt2img-"
+    offset = ""
+    # Add REPA to name
+    if args.proj_coeff > 0:
+        path_name = str(args.path_type).capitalize()
+        coeff_str = str(args.proj_coeff).replace('.', 'p')
+        exp_name += offset + f"repa{path_name}-{coeff_str}"
+        offset = "-"
+    # Add model to name. E.g., SiT-B/2 -> sitb2
+    model_name = "MMDiT"
+    if args.proj_coeff > 0:
+        # Add teacher to name. e.g., dinov2-vit-b -> dinov2VitB
+        teacher_name = "".join([comp.capitalize() if i > 0 else comp for i, comp in enumerate(args.enc_type.split('-'))])
+        exp_name += f"-{teacher_name}"
+        # Add encoder depth to name
+        exp_name += f"-enc{args.encoder_depth}"
+    else:
+        exp_name += "-vanilla"
+    # Add batch size to name
+    exp_name += f"-bs{args.batch_size}"
+    # add denoising loss to name
+    if args.denoising_type == 'mean':
+        denoising_name = 'mean'
+    elif args.denoising_type == 'triplet_any_noise':
+        denoising_name = 'tripany'
+    # elif args.denoising_type == 'class_conditioned_triplet_mse':
+        # denoising_name = 'cctripmse'
+    elif args.denoising_type == 'triplet_same_noise':
+        denoising_name = 'tripsame'
+    else:
+        raise NotImplementedError()
+    
+    coeff_str = str(args.denoising_temp).replace('.', 'p')
+    exp_name += f"-{denoising_name}Temp{coeff_str}"
+    
+    exp_name += f"-res{args.resolution}"
+    
+    print(exp_name)
+    return exp_name
+
+
 #################################################################################
 #                                  Training Loop                                #
 #################################################################################
 
-def main(args):    
+def main(args, exp_name):    
     # set accelerator
     logging_dir = Path(args.output_dir, args.logging_dir)
     accelerator_project_config = ProjectConfiguration(
@@ -133,7 +180,7 @@ def main(args):
 
     if accelerator.is_main_process:
         os.makedirs(args.output_dir, exist_ok=True)  # Make results folder (holds all experiment subfolders)
-        save_dir = os.path.join(args.output_dir, args.exp_name)
+        save_dir = os.path.join(args.output_dir, exp_name)
         os.makedirs(save_dir, exist_ok=True)
         args_dict = vars(args)
         # Save to a JSON file
@@ -179,15 +226,36 @@ def main(args):
         ).view(1, 4, 1, 1).to(device)
 
     # create loss function
-    loss_fn = SILoss(
-        prediction=args.prediction,
-        path_type=args.path_type, 
-        encoders=encoders,
-        accelerator=accelerator,
-        latents_scale=latents_scale,
-        latents_bias=latents_bias,
-        weighting=args.weighting
-    )
+    print("args.denoising_type", args.denoising_type)
+    if args.denoising_type == 'mean':
+        from loss import SILoss
+        loss_fn = SILoss(
+            prediction=args.prediction,
+            path_type=args.path_type, 
+            encoders=encoders,
+            accelerator=accelerator,
+            latents_scale=latents_scale,
+            latents_bias=latents_bias,
+            weighting=args.weighting,
+        )
+    elif 'triplet' in args.denoising_type:
+        from triplet_loss import TripletSILoss
+        loss_fn = TripletSILoss(
+            prediction=args.prediction,
+            path_type=args.path_type, 
+            encoders=encoders,
+            accelerator=accelerator,
+            latents_scale=latents_scale,
+            latents_bias=latents_bias,
+            weighting=args.weighting,
+            denoising_type=args.denoising_type,
+            denoising_weight=args.denoising_temp,
+        )
+        
+    else:
+        print("args.denoising_type", args.denoising_type)
+        # Raise NotImplementedError("Denoising type not implemented")
+    
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
     
@@ -228,7 +296,7 @@ def main(args):
     if args.resume_step > 0:
         ckpt_name = str(args.resume_step).zfill(7) +'.pt'
         ckpt = torch.load(
-            f'{os.path.join(args.output_dir, args.exp_name)}/checkpoints/{ckpt_name}',
+            f'{os.path.join(args.output_dir, exp_name)}/checkpoints/{ckpt_name}',
             map_location='cpu',
             )
         model.load_state_dict(ckpt['model'])
@@ -243,10 +311,10 @@ def main(args):
     if accelerator.is_main_process:
         tracker_config = vars(copy.deepcopy(args))
         accelerator.init_trackers(
-            project_name="REPA", 
+            project_name=args.wandb_project,  
             config=tracker_config,
             init_kwargs={
-                "wandb": {"name": f"{args.exp_name}"}
+                "wandb": {"name": f"{exp_name}"}
             },
         )
         
@@ -378,11 +446,12 @@ def parse_args(input_args=None):
 
     # logging:
     parser.add_argument("--output-dir", type=str, default="exps")
-    parser.add_argument("--exp-name", type=str, required=True)
+    # parser.add_argument("--exp-name", type=str, required=True)
     parser.add_argument("--logging-dir", type=str, default="logs")
     parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--sampling-steps", type=int, default=10000)
     parser.add_argument("--resume-step", type=int, default=0)
+    parser.add_argument("--wandb-project", type=str, default="REPA")
 
     # model
     parser.add_argument("--encoder-depth", type=int, default=8)
@@ -395,6 +464,7 @@ def parse_args(input_args=None):
     parser.add_argument("--batch-size", type=int, default=256)
 
     # precision
+    
     parser.add_argument("--allow-tf32", action="store_true")
     parser.add_argument("--mixed-precision", type=str, default="fp16", choices=["no", "fp16", "bf16"])
 
@@ -424,6 +494,20 @@ def parse_args(input_args=None):
     parser.add_argument("--proj-coeff", type=float, default=0.5)
     parser.add_argument("--weighting", default="uniform", type=str, help="Max gradient norm.")
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False)
+    
+    # triplet loss terms
+    parser.add_argument(
+        "--denoising-type", 
+        type=str, 
+        default="mean", 
+        # choices=[
+        #     "mean", 
+        #     "triplet_any_noise", 
+        #     "class_conditioned_triplet_mse",
+        #     "triplet_same_noise"
+        # ]
+    )
+    parser.add_argument("--denoising-temp", type=float, default=1.0)
 
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -434,5 +518,5 @@ def parse_args(input_args=None):
 
 if __name__ == "__main__":
     args = parse_args()
-    
-    main(args)
+    exp_name = create_experiment_name(args)
+    main(args, exp_name)
