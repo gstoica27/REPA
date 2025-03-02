@@ -451,7 +451,7 @@ def main(args, exp_name):
                         guidance_high=1.,
                         path_type=args.path_type,
                         heun=False,
-                    ).to(torch.float32)
+                    )["samples"].to(torch.float32)
                     samples = vae.decode((samples -  latents_bias) / latents_scale).sample
                     gt_samples = vae.decode((gt_xs - latents_bias) / latents_scale).sample
                     samples = (samples + 1) / 2.
