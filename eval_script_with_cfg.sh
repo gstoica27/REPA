@@ -30,7 +30,7 @@ do
             --master-port 29501 \
             generate.py \
             --model "${MODEL_NAME}" \
-            --num-fid-samples 1000 \
+            --num-fid-samples 50000 \
             --ckpt "${EXP_LOC}/checkpoints/${fname}" \
             --path-type=linear \
             --encoder-depth=8 \
@@ -60,7 +60,7 @@ do
             --master-port 29502 \
             generate.py \
             --model "${MODEL_NAME}" \
-            --num-fid-samples 1000 \
+            --num-fid-samples 50000 \
             --ckpt "${EXP_LOC}/checkpoints/${fname}" \
             --path-type=linear \
             --encoder-depth=8 \
