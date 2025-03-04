@@ -19,7 +19,7 @@ for exp_name in $MODEL_ITERS
 do
     # EXP_LOC="exps/${exp_name}"
     EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
-    SAVE_DIR="/weka/oe-training-default/xiangf/research/REPA/samples_xiangf/fid_50k/"$3"_steps/with_cfg_"$1"_"$2"//${exp_name}"
+    SAVE_DIR="/weka/oe-training-default/xiangf/research/REPA/samples_xiangf_newcfg/fid_50k/"$3"_steps/with_cfg_"$1"_"$2"//${exp_name}"
     for fname in $CHECKPOINT_ITERS
         do
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
