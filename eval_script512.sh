@@ -1,7 +1,7 @@
 #!/bin/bash
-MODEL_NAME="SiT-B/2"
-# MODEL_NAME="SiT-XL/2"
+MODEL_NAME="SiT-XL/2"
 MODEL_ITERS="sitxl2-vanilla-bs256-tripanyTemp0p05-res512 sitxl2-vanilla-bs256-meanTemp0p0-res512"
+# MODEL_NAME="SiT-B/2"
 # CHECKPOINT_ITERS="0050000.pt 0100000.pt 0150000.pt 0200000.pt 0250000.pt 0300000.pt 0350000.pt 0400000.pt"
 CHECKPOINT_ITERS="0400000.pt"
 # Compute this list using the utils find_experiment_paths -> convert_pylist_to_shlist functions! 
