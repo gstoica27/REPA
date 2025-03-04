@@ -127,6 +127,7 @@ def euler_maruyama_sampler(
         path_type="linear",
         record_intermediate_steps=False,
         record_intermediate_steps_freq=None,
+        lam=0.05,
         ):
     # setup conditioning
     if cfg_scale > 1.0:
@@ -167,7 +168,9 @@ def euler_maruyama_sampler(
             d_cur = v_cur - 0.5 * diffusion * s_cur
             if cfg_scale > 1. and t_cur <= guidance_high and t_cur >= guidance_low:
                 d_cur_cond, d_cur_uncond = d_cur.chunk(2)
-                d_cur = d_cur_uncond + cfg_scale * (d_cur_cond - d_cur_uncond)
+                # d_cur = d_cur_uncond + cfg_scale * (d_cur_cond - d_cur_uncond)
+                w_cfg = cfg_scale - 1
+                d_cur = (1 + w_cfg) * d_cur_cond - (w_cfg - lam - lam * w_cfg) * d_cur_uncond
 
             x_next =  x_cur + d_cur * dt + torch.sqrt(diffusion) * deps
             
