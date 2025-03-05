@@ -214,6 +214,8 @@ def euler_maruyama_sampler(
                     trajectory_vectors += [detach_and_dtype(x_next - x_source)]
                 elif trajectory_structure_type == "straightness":
                     trajectory_vectors += [detach_and_dtype(x_next - x_cur)]
+                elif trajectory_structure_type == "length":
+                    trajectory_vectors += [detach_and_dtype(x_next - x_cur)]
                 else:
                     raise NotImplementedError("trajectory structure type not implemented")
 
@@ -258,6 +260,8 @@ def euler_maruyama_sampler(
         elif trajectory_structure_type == "source_cosine":
             trajectory_vectors += [detach_and_dtype(mean_x - x_source)]
         elif trajectory_structure_type == "straightness":
+            trajectory_vectors += [detach_and_dtype(mean_x - x_cur)]
+        elif trajectory_structure_type == "length":
             trajectory_vectors += [detach_and_dtype(mean_x - x_cur)]
         else:
             raise NotImplementedError("trajectory structure type not implemented")
