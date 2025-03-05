@@ -261,10 +261,11 @@ def main(args):
                     similarities = torch.bmm(trajectory_vectors, trajectory_vectors.transpose(1, 2))
                     similarities.diagonal(dim1=1, dim2=2).fill_(0) # zero-out the identical samples
                 elif args.trajectory_structure_type == "straightness":
-                    pdb.set_trace()
                     velocity = z - samples_dict['samples']
                     paths = velocity[None].flatten(2) - samples_dict['trajectory_vectors'].flatten(2)
-                    similarities = (torch.norm(paths, p=2, dim=-1) ** 2)
+                    similarities = (torch.norm(paths, p=2, dim=-1) ** 2).transpose(1, 0)
+                elif args.trajectory_structure_type == "length":
+                    similarities = (torch.norm(samples_dict['trajectory_vectors'].flatten(2), p=2, dim=-1)**2).transpose(1, 0)
                     
                 else:
                     raise ValueError("Invalid trajectory_structure_type")
