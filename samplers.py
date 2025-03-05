@@ -170,6 +170,7 @@ def euler_maruyama_sampler(
     if record_intermediate_steps:
         assert record_intermediate_steps_freq is not None
         intermediates = []
+        expecteds = []
     
     if record_trajectory_structure:
         assert trajectory_structure_type is not None
@@ -206,6 +207,11 @@ def euler_maruyama_sampler(
             
             if record_intermediate_steps and (i + 1) % record_intermediate_steps_freq == 0:
                 intermediates.append(deepcopy(x_next.detach().to(torch.float32)))
+                expecteds += [
+                    deepcopy(
+                        (latents - v_cur).detach().to(torch.float32)
+                    )
+                ]
             
             if record_trajectory_structure:
                 if trajectory_structure_type == "segment_cosine":
@@ -252,6 +258,7 @@ def euler_maruyama_sampler(
     if record_intermediate_steps:
         intermediates.append(deepcopy(mean_x.detach().to(torch.float32)))
         return_dict["intermediate_steps"] = intermediates
+        return_dict["expecteds"] = expecteds
         # return mean_x.to(torch.float32), intermediates
     
     if record_trajectory_structure:

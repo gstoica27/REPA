@@ -220,9 +220,15 @@ def main(args):
             
             samples = deepcopy(samples_dict['samples'].to(torch.float32))
             if args.record_intermediate_steps:
+                # Images during trajectory
                 intermediate_steps = samples_dict['intermediate_steps']
                 intermediate_images = [create_image_from_latents(vae, intermediate_step, latents_bias, latents_scale) for intermediate_step in intermediate_steps]
                 intermediate_samples = np.stack(intermediate_images, axis=0).transpose((1,0,2,3,4))
+                # Expected final images at each trajectory step
+                intermediate_expecteds = samples_dict['expecteds']
+                intermediate_expectctions = [create_image_from_latents(vae, intermediate_step, latents_bias, latents_scale) for intermediate_step in intermediate_expecteds]
+                intermediate_expectations = np.stack(intermediate_expectctions, axis=0).transpose((1,0,2,3,4))
+                
             samples = vae.decode((samples -  latents_bias) / latents_scale).sample
             samples = (samples + 1) / 2.
             samples = torch.clamp(
@@ -235,21 +241,28 @@ def main(args):
                 
             if args.record_intermediate_steps:
                 # Save images from intermediate steps
-                for i, (final_sample, path_images) in enumerate(zip(samples, intermediate_samples)):
+                for i, (final_sample, path_images, path_expectations) in enumerate(zip(samples, intermediate_samples, intermediate_expectations)):
                     index = i * dist.get_world_size() + rank + total
                     cls_id = y[i].item()
                     cls_name = IMNET_CLS_DICT[cls_id]
                     save_dir = os.path.join(sample_folder_dir, "intermediate_steps", cls_name)
                     os.makedirs(save_dir, exist_ok=True)
                     Image.fromarray(final_sample).save(f"{save_dir}/{index:06d}.png")
-                    
+                    # Save images during trajectory step
                     intermediates_save_dir = os.path.join(save_dir, f"{index:06d}_path")
                     os.makedirs(intermediates_save_dir, exist_ok=True)
                     for delta, image_in_path in enumerate(path_images):
                         interval = (delta+1) * args.record_intermediate_steps_freq
                         save_path = os.path.join(intermediates_save_dir, f"step_{interval}.png")
                         Image.fromarray(image_in_path).save(save_path)
-
+                    # Save expected images
+                    expectations_save_dir = os.path.join(save_dir, f"{index:06d}_expectations")
+                    os.makedirs(expectations_save_dir, exist_ok=True)
+                    for delta, image_in_path in enumerate(path_expectations):
+                        interval = (delta+1) * args.record_intermediate_steps_freq
+                        save_path = os.path.join(expectations_save_dir, f"step_{interval}.png")
+                        Image.fromarray(image_in_path).save(save_path)
+                    
             if args.record_trajectory_structure:
                 if args.trajectory_structure_type == "segment_cosine":
                     trajectory_vectors = F.normalize(samples_dict['trajectory_vectors'].transpose(1, 0).flatten(2), dim=-1)
