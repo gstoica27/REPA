@@ -2,6 +2,7 @@ import pdb
 import torch
 import numpy as np
 import torch.nn.functional as F
+from einops import repeat, rearrange
 
 def mean_flat(x, temperature=1.0, **kwargs):
     """
@@ -119,30 +120,70 @@ class TripletSILoss:
 
         return alpha_t, sigma_t, d_alpha_t, d_sigma_t
     
-    def compute_triplet_loss(self, x, y):
+    def compute_triplet_loss_efficiently(self, x, y, labels=None):
         x = x.flatten(1)
         y = y.flatten(1)
-        error = ((x[None] - y[:, None]) ** 2).mean(-1)
-        indices = torch.arange(x.shape[0]).to(x.device)
-        choices = torch.tensor([indices[indices != i][torch.randperm(x.shape[0]-1)[0]] for i in range(x.shape[0])])
-        assert ((choices == indices.cpu()).sum() == 0).item(), "Triplet loss choices are incorrect"
-        negatives = error[np.arange(x.shape[0]), choices]
-        positives = error.diagonal()
-        loss = positives - self.temperature * negatives
-        return loss
+        # Obtain positive samples and compute error
+        y_pos = y
+        pos_error = mean_flat((x - y_pos) ** 2)
+        # Obtain contrastive samples
+        if labels is not None:
+            is_cond = labels != 1000 # TODO: FIX THIS HACK. NOTE: REMOVE FOR ANYTHING BESIDES IMAGENET1K!!!!
+            x_usable = x[is_cond]
+            y_usable = y[is_cond]
+        else:
+            x_usable = x
+            y_usable = y
+            
+        bsz = x_usable.shape[0]
+        choices = repeat(torch.arange(bsz), "b -> B b", B=bsz).clone().to(x.device)
+        choices[torch.eye(bsz).bool()] = -1
+        choices = rearrange(choices[choices != -1], "(b c) -> b c", b=bsz, c=bsz-1)
+        choices = choices[torch.arange(bsz),torch.randint(0, bsz-1, (bsz,))]
+        assert ((choices == torch.arange(bsz).to(x.device)).sum() == 0).item(), "Triplet loss choices are incorrect"
+        y_neg = y_usable[choices]
+        # Compute error
+        neg_error = mean_flat((x_usable - y_neg) ** 2)
+        # Compute loss
+        # loss = pos_error - self.temperature * neg_error
+        # return loss
+        return {
+            # "loss": loss,
+            "flow_loss": pos_error,
+            "contrastive_loss": - self.temperature * neg_error
+        }
     
-    def triplet_any_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises):
+    # def compute_triplet_loss(self, x, y):
+    #     pdb.set_trace()
+    #     x = x.flatten(1)
+    #     y = y.flatten(1)
+    #     error = ((x[None] - y[:, None]) ** 2).mean(-1)
+    #     indices = torch.arange(x.shape[0]).to(x.device)
+    #     choices = torch.tensor([indices[indices != i][torch.randperm(x.shape[0]-1)[0]] for i in range(x.shape[0])])
+    #     assert ((choices == indices.cpu()).sum() == 0).item(), "Triplet loss choices are incorrect"
+    #     negatives = error[np.arange(x.shape[0]), choices]
+    #     positives = error.diagonal()
+    #     loss = positives - self.temperature * negatives
+    #     # return loss
+    #     return {
+    #         "loss": loss,
+    #         "flow_loss": positives,
+    #         "contrastive_loss": negatives
+    #     }
+    
+    def triplet_any_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None):
         model_target = d_alpha_t * target_images + d_sigma_t * noises
-        loss = self.compute_triplet_loss(pred, model_target)
+        # loss = self.compute_triplet_loss(pred, model_target)
+        loss = self.compute_triplet_loss_efficiently(pred, model_target, labels)
         # check = triplet_mse_loss(pred, model_target, temperature=self.temperature, choices=choices)
         # # assert torch.allclose(loss, check), "Triplet loss check failed"
         # if not torch.allclose(loss, check):
         #     pdb.set_trace()
         return loss
     
-    def triplet_same_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises):
+    def triplet_same_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None):
         reconstructed_target = (pred - d_sigma_t * noises) / d_alpha_t
-        loss = self.compute_triplet_loss(reconstructed_target, target_images)
+        loss = self.compute_triplet_loss(reconstructed_target, target_images, labels)
         return loss
 
     def __call__(self, model, images, model_kwargs=None, zs=None):
@@ -166,14 +207,15 @@ class TripletSILoss:
         alpha_t, sigma_t, d_alpha_t, d_sigma_t = self.interpolant(time_input)
             
         model_input = alpha_t * images + sigma_t * noises
-        model_output, zs_tilde = model(model_input, time_input.flatten(), **model_kwargs)
+        model_output, zs_tilde, labels = model(model_input, time_input.flatten(), **model_kwargs)
         # pdb.set_trace()
         denoising_loss = self.denoising_fn(
             pred=model_output, 
             target_images=images, 
             d_alpha_t=d_alpha_t, 
             d_sigma_t=d_sigma_t, 
-            noises=noises
+            noises=noises,
+            labels=labels
         )
         # denoising_loss = self.denoising_fn(model_output, model_target, temperature=self.denoising_weight, cls=model_kwargs['y'])
         # projection loss

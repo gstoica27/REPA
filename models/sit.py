@@ -96,7 +96,7 @@ class LabelEmbedder(nn.Module):
         if (train and use_dropout) or (force_drop_ids is not None):
             labels = self.token_drop(labels, force_drop_ids)
         embeddings = self.embedding_table(labels)
-        return embeddings
+        return embeddings, labels
 
 
 #################################################################################
@@ -271,10 +271,9 @@ class SiT(nn.Module):
         """
         x = self.x_embedder(x) + self.pos_embed  # (N, T, D), where T = H * W / patch_size ** 2
         N, T, D = x.shape
-
         # timestep and class embedding
         t_embed = self.t_embedder(t)                   # (N, D)
-        y = self.y_embedder(y, self.training)    # (N, D)
+        y, labels = self.y_embedder(y, self.training)  # (N, D)
         c = t_embed + y                                # (N, D)
 
         for i, block in enumerate(self.blocks):
@@ -284,7 +283,7 @@ class SiT(nn.Module):
         x = self.final_layer(x, c)                # (N, T, patch_size ** 2 * out_channels)
         x = self.unpatchify(x)                   # (N, out_channels, H, W)
 
-        return x, zs
+        return x, zs, labels
 
 
 #################################################################################

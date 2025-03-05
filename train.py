@@ -405,10 +405,12 @@ def main(args, exp_name):
 
             with accelerator.accumulate(model):
                 model_kwargs = dict(y=labels)
-                loss, proj_loss = loss_fn(model, x, model_kwargs, zs=zs)
-                loss_mean = loss.mean()
+                loss_dict, proj_loss = loss_fn(model, x, model_kwargs, zs=zs)
+                loss_mean = loss_dict["flow_loss"].mean()
                 proj_loss_mean = proj_loss.mean()
                 loss = loss_mean + proj_loss_mean * args.proj_coeff
+                if "contrastive_loss" in loss_dict:
+                    loss = loss + loss_dict["contrastive_loss"].mean()
                     
                 ## optimization
                 accelerator.backward(loss)
@@ -463,9 +465,11 @@ def main(args, exp_name):
                 logging.info("Generating EMA samples done.")
 
             logs = {
-                "loss": accelerator.gather(loss_mean).mean().detach().item(), 
+                # "loss": accelerator.gather(loss_mean).mean().detach().item(), 
                 "proj_loss": accelerator.gather(proj_loss_mean).mean().detach().item(),
-                "grad_norm": accelerator.gather(grad_norm).mean().detach().item()
+                "grad_norm": accelerator.gather(grad_norm).mean().detach().item(),
+                "flow_loss": accelerator.gather(loss_dict["flow_loss"]).mean().detach().item(),
+                "contrastive_loss": accelerator.gather(loss_dict["contrastive_loss"]).mean().detach().item(),
             }
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
