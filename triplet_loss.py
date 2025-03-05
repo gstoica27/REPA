@@ -127,49 +127,49 @@ class TripletSILoss:
         y_pos = y
         pos_error = mean_flat((x - y_pos) ** 2)
         # Obtain contrastive samples
-        if labels is not None:
-            is_cond = labels != 1000 # TODO: FIX THIS HACK. NOTE: REMOVE FOR ANYTHING BESIDES IMAGENET1K!!!!
-            x_usable = x[is_cond]
-            y_usable = y[is_cond]
-        else:
-            x_usable = x
-            y_usable = y
-            
-        bsz = x_usable.shape[0]
-        choices = repeat(torch.arange(bsz), "b -> B b", B=bsz).clone().to(x.device)
-        choices[torch.eye(bsz).bool()] = -1
-        choices = rearrange(choices[choices != -1], "(b c) -> b c", b=bsz, c=bsz-1)
-        choices = choices[torch.arange(bsz),torch.randint(0, bsz-1, (bsz,))]
+        # if labels is not None:
+        #     is_cond = labels != 1000 # TODO: FIX THIS HACK. NOTE: REMOVE FOR ANYTHING BESIDES IMAGENET1K!!!!
+        #     x_usable = x[is_cond]
+        #     y_usable = y[is_cond]
+        # else:
+        #     x_usable = x
+        #     y_usable = y
+        bsz = x.shape[0]
+        choices = torch.tile(torch.arange(bsz), (bsz, 1)).to(x.device)
+        choices.fill_diagonal_(-1.)
+        choices = choices.sort(dim=1)[0][:, 1:]
+        choices = choices[torch.arange(bsz), torch.randint(0, bsz-1, (bsz,))]
         assert ((choices == torch.arange(bsz).to(x.device)).sum() == 0).item(), "Triplet loss choices are incorrect"
-        y_neg = y_usable[choices]
+        y_neg = y[choices]
         # Compute error
-        neg_error = mean_flat((x_usable - y_neg) ** 2)
+        neg_elem_error = ((x - y_neg) ** 2) * (labels != 1000).to(x.device).unsqueeze(-1)
+        neg_elem_error = neg_elem_error * bsz / (labels != 1000).sum() # rescale to account for null classes
+        neg_error = mean_flat(neg_elem_error)
         # Compute loss
-        # loss = pos_error - self.temperature * neg_error
+        loss = pos_error - self.temperature * neg_error
         # return loss
         return {
-            # "loss": loss,
+            "loss": loss,
             "flow_loss": pos_error,
-            "contrastive_loss": - self.temperature * neg_error
+            "contrastive_loss": neg_error
         }
     
-    # def compute_triplet_loss(self, x, y):
-    #     pdb.set_trace()
-    #     x = x.flatten(1)
-    #     y = y.flatten(1)
-    #     error = ((x[None] - y[:, None]) ** 2).mean(-1)
-    #     indices = torch.arange(x.shape[0]).to(x.device)
-    #     choices = torch.tensor([indices[indices != i][torch.randperm(x.shape[0]-1)[0]] for i in range(x.shape[0])])
-    #     assert ((choices == indices.cpu()).sum() == 0).item(), "Triplet loss choices are incorrect"
-    #     negatives = error[np.arange(x.shape[0]), choices]
-    #     positives = error.diagonal()
-    #     loss = positives - self.temperature * negatives
-    #     # return loss
-    #     return {
-    #         "loss": loss,
-    #         "flow_loss": positives,
-    #         "contrastive_loss": negatives
-    #     }
+    def compute_triplet_loss(self, x, y):
+        x = x.flatten(1)
+        y = y.flatten(1)
+        error = ((x[None] - y[:, None]) ** 2).mean(-1)
+        indices = torch.arange(x.shape[0]).to(x.device)
+        choices = torch.tensor([indices[indices != i][torch.randperm(x.shape[0]-1)[0]] for i in range(x.shape[0])])
+        assert ((choices == indices.cpu()).sum() == 0).item(), "Triplet loss choices are incorrect"
+        negatives = error[np.arange(x.shape[0]), choices]
+        positives = error.diagonal()
+        loss = positives - self.temperature * negatives
+        # return loss
+        return {
+            "loss": loss,
+            "flow_loss": positives,
+            "contrastive_loss": negatives
+        }
     
     def triplet_any_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None):
         model_target = d_alpha_t * target_images + d_sigma_t * noises
