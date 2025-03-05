@@ -209,7 +209,8 @@ def euler_maruyama_sampler(
                 intermediates.append(deepcopy(x_next.detach().to(torch.float32)))
                 expecteds += [
                     deepcopy(
-                        (latents - v_cur).detach().to(torch.float32)
+                        # (latents - v_cur).detach().to(torch.float32)
+                        (x_cur + d_cur * torch.sqrt(diffusion) * deps).detach().to(torch.float32)
                     )
                 ]
             

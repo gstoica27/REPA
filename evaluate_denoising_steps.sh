@@ -32,7 +32,7 @@ do
             --guidance-high=0.0 \
             --sample-dir "${SAVE_DIR}" \
             --record-intermediate-steps \
-            --record-intermediate-steps-freq 3 \
+            --record-intermediate-steps-freq 5 \
             --record-custom-classes 153 88 2 417 933 555 932 385 386 294 33 207 250 387 402 620 812 429 388 360 291 89 928 973 302 340 511 609 878 919 888 698 866 576 547 13 14 18 17 31 96 145 148 327 403 873 839 820\
             --rough-examples-per-class 64 \
             --resolution 256
