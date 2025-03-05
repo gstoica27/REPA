@@ -212,6 +212,10 @@ def euler_maruyama_sampler(
                     trajectory_vectors += [detach_and_dtype(x_next - x_cur)]
                 elif trajectory_structure_type == "source_cosine":
                     trajectory_vectors += [detach_and_dtype(x_next - x_source)]
+                elif trajectory_structure_type == "straightness":
+                    trajectory_vectors += [detach_and_dtype(x_next - x_cur)]
+                else:
+                    raise NotImplementedError("trajectory structure type not implemented")
 
     # last step
     t_cur, t_next = t_steps[-2], t_steps[-1]
@@ -253,6 +257,11 @@ def euler_maruyama_sampler(
             trajectory_vectors += [detach_and_dtype(mean_x - x_cur)]
         elif trajectory_structure_type == "source_cosine":
             trajectory_vectors += [detach_and_dtype(mean_x - x_source)]
+        elif trajectory_structure_type == "straightness":
+            trajectory_vectors += [detach_and_dtype(mean_x - x_cur)]
+        else:
+            raise NotImplementedError("trajectory structure type not implemented")
+        
         return_dict["trajectory_vectors"] = torch.stack(trajectory_vectors)
     
     # return mean_x

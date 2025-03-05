@@ -27,6 +27,7 @@ import pdb
 import random
 from imnet1k_classes import IMNET_CLS_DICT
 import torch.nn.functional as F
+from copy import deepcopy
 
 def create_npz_from_sample_folder(sample_dir, num=50_000):
     """
@@ -217,7 +218,7 @@ def main(args):
                 [0., 0., 0., 0.,]
                 ).view(1, 4, 1, 1).to(device)
             
-            samples = samples_dict['samples'].to(torch.float32)
+            samples = deepcopy(samples_dict['samples'].to(torch.float32))
             if args.record_intermediate_steps:
                 intermediate_steps = samples_dict['intermediate_steps']
                 intermediate_images = [create_image_from_latents(vae, intermediate_step, latents_bias, latents_scale) for intermediate_step in intermediate_steps]
@@ -250,14 +251,21 @@ def main(args):
                         Image.fromarray(image_in_path).save(save_path)
 
             if args.record_trajectory_structure:
-                trajectory_vectors = F.normalize(samples_dict['trajectory_vectors'].transpose(1, 0).flatten(2), dim=-1)
                 if args.trajectory_structure_type == "segment_cosine":
+                    trajectory_vectors = F.normalize(samples_dict['trajectory_vectors'].transpose(1, 0).flatten(2), dim=-1)
                     A = trajectory_vectors[:,:-1,:]
                     B = trajectory_vectors[:, 1:,:]
                     similarities = (A * B).sum(dim=-1)
                 elif args.trajectory_structure_type == "source_cosine":
+                    trajectory_vectors = F.normalize(samples_dict['trajectory_vectors'].transpose(1, 0).flatten(2), dim=-1)
                     similarities = torch.bmm(trajectory_vectors, trajectory_vectors.transpose(1, 2))
                     similarities.diagonal(dim1=1, dim2=2).fill_(0) # zero-out the identical samples
+                elif args.trajectory_structure_type == "straightness":
+                    pdb.set_trace()
+                    velocity = z - samples_dict['samples']
+                    paths = velocity[None].flatten(2) - samples_dict['trajectory_vectors'].flatten(2)
+                    similarities = (torch.norm(paths, p=2, dim=-1) ** 2)
+                    
                 else:
                     raise ValueError("Invalid trajectory_structure_type")
                 
@@ -333,7 +341,7 @@ if __name__ == "__main__":
     
     # Instructions for computing cosine similarities
     parser.add_argument("--record-trajectory-structure", action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument("--trajectory-structure-type", type=str, default=None, choices=["segment_cosine", "source_cosine", None])
+    parser.add_argument("--trajectory-structure-type", type=str, default=None, choices=["segment_cosine", "source_cosine", "straightness", None])
 
     args = parser.parse_args()
     main(args)
