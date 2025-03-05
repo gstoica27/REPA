@@ -342,7 +342,7 @@ if __name__ == "__main__":
     
     # Instructions for computing cosine similarities
     parser.add_argument("--record-trajectory-structure", action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument("--trajectory-structure-type", type=str, default=None, choices=["segment_cosine", "source_cosine", "straightness", None])
+    parser.add_argument("--trajectory-structure-type", type=str, default=None)
 
     args = parser.parse_args()
     main(args)
