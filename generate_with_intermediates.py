@@ -263,7 +263,7 @@ def main(args):
                         save_path = os.path.join(expectations_save_dir, f"step_{interval}.png")
                         Image.fromarray(image_in_path).save(save_path)
                     
-            if args.record_trajectory_structure:
+            elif args.record_trajectory_structure:
                 if args.trajectory_structure_type == "segment_cosine":
                     trajectory_vectors = F.normalize(samples_dict['trajectory_vectors'].transpose(1, 0).flatten(2), dim=-1)
                     A = trajectory_vectors[:,:-1,:]
@@ -290,6 +290,16 @@ def main(args):
                     # print(f"Index: {index} | Rank: {rank} | Total: {total} | i: {i} | world size: {dist.get_world_size()}")
                     np.savez(os.path.join(save_dir, f"{index}.npz"), arr_0=sample_sims)
                     # trajectory_idxs[index] = sample_sims
+            
+            else:
+                # Save samples to disk as individual .png files
+                for i, sample in enumerate(samples):
+                    index = i * dist.get_world_size() + rank + total
+                    cls_id = y[i].item()
+                    cls_name = IMNET_CLS_DICT[cls_id]
+                    save_dir = os.path.join(sample_folder_dir, cls_name)
+                    os.makedirs(save_dir, exist_ok=True)
+                    Image.fromarray(sample).save(f"{save_dir}/{index:06d}.png")
         
         total += global_batch_size
 
