@@ -10,8 +10,8 @@ CHECKPOINT_ITERS="1800000.pt 1750000.pt 1700000.pt 1650000.pt 1600000.pt 1550000
 # CHECKPOINT_ITERS="0400000.pt"
 # Compute this list using the utils find_experiment_paths -> convert_pylist_to_shlist functions! 
 # SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_50k"
-SAVE_DIR="/weka/oe_training_default/georges/research/REPA/samples2/fid_50k/7M_models"
-EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/exps2_7M_reverse"
+SAVE_DIR="/weka/oe_training_default/georges/research/REPA/samples2/fid_50k/7M_models_reverse"
+EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/exps2_7M"
 
 for exp_name in $MODEL_ITERS
 do 
