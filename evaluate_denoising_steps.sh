@@ -1,18 +1,22 @@
 #!/bin/bash
 MODEL_NAME="SiT-XL/2"
-MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05 linear-dinov2-b-enc8"
+# MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05 linear-dinov2-b-enc8"
 # MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05-res512 repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-meanTemp0p0-res512"
-CHECKPOINT_FNAME="0400000.pt"
-STEPS="30"
+MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05-res256/repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-meanTemp0p0-res256"
+# MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05-res256"
+# CHECKPOINT_FNAME="0400000.pt"
+CHECKPOINT_FNAME="1800000.pt"
+STEPS="50"
 
 
 for steps in $STEPS
 do
     for exp_name in $MODEL_ITERS
         do
-        EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/${exp_name}"
+        # EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/${exp_name}"
+        EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/exps2_7M/${steps}_stpes/${exp_name}"
         # SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_analysis512/${steps}_steps/${exp_name}"
-        SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_analysis2/${steps}_steps/${exp_name}"
+        SAVE_DIR="/weka/oe_training_default/georges/research/REPA/samples_analysis2/${steps}_steps/${exp_name}"
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
             torchrun \
             --nnodes=1 \
