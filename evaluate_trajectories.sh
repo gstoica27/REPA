@@ -11,7 +11,7 @@ do
     for exp_name in $MODEL_ITERS
         do
         EXP_LOC="/weka/prior-default/georges/research/REPA/exps2/${exp_name}"
-        SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_analysis/${steps}_steps/${exp_name}"
+        SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_analysis2/${steps}_steps/${exp_name}"
         for trajectory_structure_type in $TRAJECTORY_STRUCTURE_TYPES 
         do
             # if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
