@@ -14,7 +14,7 @@ do
     for exp_name in $MODEL_ITERS
         do
         # EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/${exp_name}"
-        EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/exps2_7M/${steps}_stpes/${exp_name}"
+        EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/exps2_7M/${steps}_steps/${exp_name}"
         # SAVE_DIR="/weka/prior-default/georges/research/REPA/samples_analysis512/${steps}_steps/${exp_name}"
         SAVE_DIR="/weka/oe_training_default/georges/research/REPA/samples_analysis2/${steps}_steps/${exp_name}"
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
