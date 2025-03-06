@@ -204,15 +204,19 @@ def euler_maruyama_sampler(
                 d_cur = d_cur_uncond + cfg_scale * (d_cur_cond - d_cur_uncond)
 
             x_next =  x_cur + d_cur * dt + torch.sqrt(diffusion) * deps
+            x_final = x_cur + d_cur * (t_steps[-1] - t_cur)
             
             if record_intermediate_steps and (i + 1) % record_intermediate_steps_freq == 0:
                 intermediates.append(deepcopy(x_next.detach().to(torch.float32)))
+                '''
                 expecteds += [
                     deepcopy(
                         # (latents - v_cur).detach().to(torch.float32)
                         (x_cur + d_cur * torch.sqrt(diffusion) * deps).detach().to(torch.float32)
                     )
                 ]
+                '''
+                expecteds += [x_final]
             
             if record_trajectory_structure:
                 if trajectory_structure_type == "segment_cosine":
