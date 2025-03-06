@@ -216,7 +216,7 @@ def euler_maruyama_sampler(
                     )
                 ]
                 '''
-                expecteds += [x_final]
+                expecteds += [x_final.detach().to(torch.float32)]
             
             if record_trajectory_structure:
                 if trajectory_structure_type == "segment_cosine":
