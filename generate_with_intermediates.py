@@ -148,6 +148,9 @@ def main(args):
         elif samples_needed_this_gpu <= args.per_proc_batch_size:
             n = samples_needed_this_gpu
         else:
+            print("samples_needed_this_gpu: ", samples_needed_this_gpu)
+            print("args.per_proc_batch_size: ", args.per_proc_batch_size)
+            print("args.rough_examples_per_class: ", args.rough_examples_per_class)
             raise ValueError("samples_needed_this_gpu must be divisible by the per-GPU batch size or the rough_examples_per_class")
         global_batch_size = n * dist.get_world_size()
         if rank == 0:
