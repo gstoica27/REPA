@@ -31,7 +31,7 @@ do
             --cfg-scale=1.0 \
             --guidance-high=0.0 \
             --sample-dir "${SAVE_DIR}" \
-            --record-custom-classes 337 250 972 90 29 297 248 973 993 385 387 417 279 291 599 985 107 125 812 809 616 644 643 408 968 475 549 975 323 280 9 277 586 360 387 974 88 979 279\
+            --record-custom-classes 337 250 972 90 29 297 248 973 993 385 387 417 279 291 599 985 107 125 812 809 616 644 643 408 968 475 549 975 323 280 9 277 586 360 387 974 88 979 279 820\
             --rough-examples-per-class 128 \
             --resolution 512
             # --record-intermediate-steps \
