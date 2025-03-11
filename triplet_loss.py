@@ -85,6 +85,7 @@ class TripletSILoss:
             latents_bias=None,
             denoising_type="mean",
             denoising_weight=1.0,
+            null_class_idx=None
             ):
         self.prediction = prediction
         self.weighting = weighting
@@ -93,6 +94,8 @@ class TripletSILoss:
         self.accelerator = accelerator
         self.latents_scale = latents_scale
         self.latents_bias = latents_bias
+        self.null_class_idx = null_class_idx
+        assert self.null_class_idx is not None, "Null class index must be provided"
         
         if denoising_type == 'triplet_any_noise':
             print('Using triplet any noise loss')
@@ -134,6 +137,7 @@ class TripletSILoss:
         # else:
         #     x_usable = x
         #     y_usable = y
+        pdb.set_trace()
         bsz = x.shape[0]
         choices = torch.tile(torch.arange(bsz), (bsz, 1)).to(x.device)
         choices.fill_diagonal_(-1.)
@@ -142,8 +146,8 @@ class TripletSILoss:
         assert ((choices == torch.arange(bsz).to(x.device)).sum() == 0).item(), "Triplet loss choices are incorrect"
         y_neg = y[choices]
         # Compute error
-        neg_elem_error = ((x - y_neg) ** 2) * (labels != 1000).to(x.device).unsqueeze(-1)
-        neg_elem_error = neg_elem_error * bsz / (labels != 1000).sum() # rescale to account for null classes
+        neg_elem_error = ((x - y_neg) ** 2) * (labels != self.null_class_idx).to(x.device).unsqueeze(-1)
+        neg_elem_error = neg_elem_error * bsz / (labels != self.null_class_idx).sum() # rescale to account for null classes
         neg_error = mean_flat(neg_elem_error)
         # Compute loss
         loss = pos_error - self.temperature * neg_error

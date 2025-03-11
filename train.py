@@ -292,6 +292,7 @@ def main(args, exp_name):
             weighting=args.weighting,
             denoising_type=args.denoising_type,
             denoising_weight=args.denoising_temp,
+            null_class_idx=args.num_classes
         )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
