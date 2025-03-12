@@ -184,7 +184,7 @@ def create_experiment_name(args):
     else:
         raise NotImplementedError()
     
-    coeff_str = str(args.denoising_temp).replace('.', 'p')
+    coeff_str = str(args.denoising_temp).replace('.', 'p').capitalize()
     exp_name += f"-{denoising_name}Temp{coeff_str}"
     
     exp_name += f"-res{args.resolution}"
@@ -560,7 +560,7 @@ def parse_args(input_args=None):
         #     "triplet_same_noise"
         # ]
     )
-    parser.add_argument("--denoising-temp", type=float, default=1.0)
+    parser.add_argument("--denoising-temp", default=1.0)
     
     if input_args is not None:
         args = parser.parse_args(input_args)
