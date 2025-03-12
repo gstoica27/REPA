@@ -137,7 +137,6 @@ class TripletSILoss:
         # else:
         #     x_usable = x
         #     y_usable = y
-        pdb.set_trace()
         bsz = x.shape[0]
         choices = torch.tile(torch.arange(bsz), (bsz, 1)).to(x.device)
         choices.fill_diagonal_(-1.)
