@@ -560,7 +560,7 @@ def parse_args(input_args=None):
         #     "triplet_same_noise"
         # ]
     )
-    parser.add_argument("--denoising-temp", default=1.0)
+    parser.add_argument("--denoising-temp", default=1.0, type=float, help="Temperature for the denoising loss.")
     
     if input_args is not None:
         args = parser.parse_args(input_args)

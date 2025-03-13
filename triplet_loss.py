@@ -129,7 +129,7 @@ class TripletSILoss:
 
         return alpha_t, sigma_t, d_alpha_t, d_sigma_t
     
-    def compute_triplet_loss_efficiently(self, x, y, labels=None, custom_weight=None):
+    def compute_triplet_loss_efficiently(self, x, y, labels=None):
         x = x.flatten(1)
         y = y.flatten(1)
         # Obtain positive samples and compute error
@@ -155,10 +155,7 @@ class TripletSILoss:
         neg_elem_error = neg_elem_error * bsz / (labels != self.null_class_idx).sum() # rescale to account for null classes
         neg_error = mean_flat(neg_elem_error)
         # Compute loss
-        if self.temperature == 'time':
-            loss = pos_error - custom_weight.reshape(-1) * neg_error
-        else:
-            loss = pos_error - self.temperature * neg_error
+        loss = pos_error - self.temperature * neg_error
         # return loss
         return {
             "loss": loss,
@@ -183,10 +180,10 @@ class TripletSILoss:
             "contrastive_loss": negatives
         }
     
-    def triplet_any_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None, custom_weight=None):
+    def triplet_any_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None):
         model_target = d_alpha_t * target_images + d_sigma_t * noises
         # loss = self.compute_triplet_loss(pred, model_target)
-        loss = self.compute_triplet_loss_efficiently(pred, model_target, labels, custom_weight=custom_weight)
+        loss = self.compute_triplet_loss_efficiently(pred, model_target, labels)
         # check = triplet_mse_loss(pred, model_target, temperature=self.temperature, choices=choices)
         # # assert torch.allclose(loss, check), "Triplet loss check failed"
         # if not torch.allclose(loss, check):
@@ -228,7 +225,6 @@ class TripletSILoss:
             d_sigma_t=d_sigma_t, 
             noises=noises,
             labels=labels,
-            custom_weight=time_input
         )
         # denoising_loss = self.denoising_fn(model_output, model_target, temperature=self.denoising_weight, cls=model_kwargs['y'])
         # projection loss
