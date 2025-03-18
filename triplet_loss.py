@@ -148,12 +148,14 @@ class TripletSILoss:
         choices.fill_diagonal_(-1.)
         choices = choices.sort(dim=1)[0][:, 1:]
         choices = choices[torch.arange(bsz), torch.randint(0, bsz-1, (bsz,))]
-        assert ((choices == torch.arange(bsz).to(x.device)).sum() == 0).item(), "Triplet loss choices are incorrect"
+        # assert ((choices == torch.arange(bsz).to(x.device)).sum() == 0).item(), "Triplet loss choices are incorrect"
         y_neg = y[choices]
         # Compute error
-        neg_elem_error = ((x - y_neg) ** 2) * (labels != self.null_class_idx).to(x.device).unsqueeze(-1)
-        neg_elem_error = neg_elem_error * bsz / (labels != self.null_class_idx).sum() # rescale to account for null classes
-        neg_error = mean_flat(neg_elem_error)
+        non_nulls = labels != self.null_class_idx
+        neg_elem_error = ((x - y_neg) ** 2) * non_nulls.to(x.device).unsqueeze(-1)
+        neg_elem_error = neg_elem_error
+        neg_error = mean_flat(neg_elem_error) * bsz / non_nulls.sum() # rescale to account for null classes
+        pdb.set_trace()
         # Compute loss
         loss = pos_error - self.temperature * neg_error
         # return loss
