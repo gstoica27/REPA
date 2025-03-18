@@ -331,16 +331,32 @@ def main(args, exp_name):
     
     # resume:
     global_step = 0
-    if args.resume_step > 0:
-        ckpt_name = str(args.resume_step).zfill(7) +'.pt'
-        ckpt = torch.load(
-            f'{os.path.join(args.output_dir, exp_name)}/checkpoints/{ckpt_name}',
-            map_location='cpu',
-            )
-        model.load_state_dict(ckpt['model'])
-        ema.load_state_dict(ckpt['ema'])
-        optimizer.load_state_dict(ckpt['opt'])
-        global_step = ckpt['steps']
+    # if args.resume_step > 0:
+    if args.resume > 0:
+        # ckpt_name = str(args.resume_step).zfill(7) +'.pt'
+        # ckpt = torch.load(
+        #     f'{os.path.join(args.output_dir, exp_name)}/checkpoints/{ckpt_name}',
+        #     map_location='cpu',
+        #     )
+        # model.load_state_dict(ckpt['model'])
+        # ema.load_state_dict(ckpt['ema'])
+        # optimizer.load_state_dict(ckpt['opt'])
+        # global_step = ckpt['steps']
+
+        experiment_dir = f'{os.path.join(args.output_dir, exp_name, "checkpoints")}'
+        if len(os.listdir(experiment_dir)) > 0:
+            ckpt_name = sorted(os.listdir(experiment_dir))[-1]
+            ckpt = torch.load(f'{experiment_dir}/{ckpt_name}', map_location='cpu')
+
+            # ckpt_name = str(args.resume_step).zfill(7) +'.pt'
+            # ckpt = torch.load(
+            #     f'{os.path.join(args.output_dir, exp_name)}/checkpoints/{ckpt_name}',
+            #     map_location='cpu',
+            #     )
+            model.load_state_dict(ckpt['model'])
+            ema.load_state_dict(ckpt['ema'])
+            optimizer.load_state_dict(ckpt['opt'])
+            global_step = ckpt['steps']
 
     model, optimizer, train_dataloader = accelerator.prepare(
         model, optimizer, train_dataloader
@@ -496,7 +512,8 @@ def parse_args(input_args=None):
     parser.add_argument("--logging-dir", type=str, default="logs")
     parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--sampling-steps", type=int, default=10000)
-    parser.add_argument("--resume-step", type=int, default=0)
+    # parser.add_argument("--resume-step", type=int, default=0)
+    parser.add_argument("--resume", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--wandb-project", type=str, default="REPA")
 
     # model
