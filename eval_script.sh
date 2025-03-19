@@ -11,10 +11,10 @@ MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05-res256"
 CHECKPOINT_ITERS="0400000.pt"
 # Compute this list using the utils find_experiment_paths -> convert_pylist_to_shlist functions! 
 # SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_50k"
-SAVE_DIR="weka/oe-training-default/georges/samples/masked_unconditionals/fid_50k"
+SAVE_DIR="weka/oe_training_default/georges/samples/masked_unconditionals/fid_50k"
 # SAVE_DIR="/weka/oe_training_default/georges/research/REPA/samples2/fid_50k/7M_models_reverse"
 # EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/exps2_7M"
-EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/masked_unconditionals"
+EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/masked_unconditionals"
 
 for exp_name in $MODEL_ITERS
 do 
