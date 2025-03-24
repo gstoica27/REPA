@@ -11,7 +11,7 @@ MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05-res256"
 CHECKPOINT_ITERS="0400000.pt"
 # Compute this list using the utils find_experiment_paths -> convert_pylist_to_shlist functions! 
 # SAVE_DIR="/weka/prior-default/georges/research/REPA/samples/fid_50k"
-SAVE_DIR="weka/oe_training_default/georges/samples/masked_unconditionals/fid_50k"
+SAVE_DIR="/weka/oe_training_default/georges/samples/masked_unconditionals/fid_50k"
 # SAVE_DIR="/weka/oe_training_default/georges/research/REPA/samples2/fid_50k/7M_models_reverse"
 # EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/exps2_7M"
 EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/masked_unconditionals"
@@ -61,24 +61,24 @@ do
     EXP_SAVE_DIR="${SAVE_DIR}/250_steps/${exp_name}"
     for fname in $CHECKPOINT_ITERS
         do
-        if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then  
-            torchrun \
-            --nnodes=1 \
-            --nproc_per_node=8 \
-            --master-port 29502 \
-            generate.py \
-            --model "${MODEL_NAME}" \
-            --num-fid-samples 50000 \
-            --ckpt "${LOAD_EXP_LOC}/checkpoints/${fname}" \
-            --path-type=linear \
-            --encoder-depth=8 \
-            --projector-embed-dims=768 \
-            --per-proc-batch-size=64 \
-            --mode=sde \
-            --num-steps=250 \
-            --cfg-scale=1.0 \
-            --guidance-high=0.0 \
-            --sample-dir "${EXP_SAVE_DIR}"
-        fi
+        # if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then  
+        torchrun \
+        --nnodes=1 \
+        --nproc_per_node=8 \
+        --master-port 29502 \
+        generate.py \
+        --model "${MODEL_NAME}" \
+        --num-fid-samples 50000 \
+        --ckpt "${LOAD_EXP_LOC}/checkpoints/${fname}" \
+        --path-type=linear \
+        --encoder-depth=8 \
+        --projector-embed-dims=768 \
+        --per-proc-batch-size=64 \
+        --mode=sde \
+        --num-steps=250 \
+        --cfg-scale=1.0 \
+        --guidance-high=0.0 \
+        --sample-dir "${EXP_SAVE_DIR}"
+        # fi
     done 
 done
