@@ -155,7 +155,7 @@ class TripletSILoss:
         neg_elem_error = ((x - y_neg) ** 2) * non_nulls.to(x.device).unsqueeze(-1)
         neg_elem_error = neg_elem_error
         neg_error = mean_flat(neg_elem_error) * bsz / non_nulls.sum() # rescale to account for null classes
-        pdb.set_trace()
+        # pdb.set_trace()
         # Compute loss
         loss = pos_error - self.temperature * neg_error
         # return loss
