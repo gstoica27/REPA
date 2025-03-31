@@ -292,7 +292,8 @@ def main(args, exp_name):
             weighting=args.weighting,
             denoising_type=args.denoising_type,
             denoising_weight=args.denoising_temp,
-            null_class_idx=args.num_classes
+            null_class_idx=args.num_classes,
+            dont_contrast_on_unconditional=args.dont_contrast_on_unconditional,
         )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -578,6 +579,8 @@ def parse_args(input_args=None):
         # ]
     )
     parser.add_argument("--denoising-temp", default=1.0, type=float, help="Temperature for the denoising loss.")
+    parser.add_argument("--dont-contrast-on-unconditional", action=argparse.BooleanOptionalAction, default=False,
+                        help="If True, apply contrastive loss on unconditional samples.")
     
     if input_args is not None:
         args = parser.parse_args(input_args)

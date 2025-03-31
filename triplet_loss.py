@@ -92,6 +92,7 @@ class TripletSILoss:
             denoising_type="mean",
             denoising_weight=1.0,
             null_class_idx=None,
+            dont_contrast_on_unconditional=False
             ):
         self.prediction = prediction
         self.weighting = weighting
@@ -101,7 +102,9 @@ class TripletSILoss:
         self.latents_scale = latents_scale
         self.latents_bias = latents_bias
         self.null_class_idx = null_class_idx
-        assert self.null_class_idx is not None, "Null class index must be provided"
+        self.dont_contrast_on_unconditional = dont_contrast_on_unconditional
+        if not self.dont_contrast_on_unconditional:
+            assert self.null_class_idx is not None, "Null class index must be provided"
         
         if denoising_type == 'triplet_any_noise':
             print('Using triplet any noise loss')
@@ -135,14 +138,6 @@ class TripletSILoss:
         # Obtain positive samples and compute error
         y_pos = y
         pos_error = mean_flat((x - y_pos) ** 2)
-        # Obtain contrastive samples
-        # if labels is not None:
-        #     is_cond = labels != 1000 # TODO: FIX THIS HACK. NOTE: REMOVE FOR ANYTHING BESIDES IMAGENET1K!!!!
-        #     x_usable = x[is_cond]
-        #     y_usable = y[is_cond]
-        # else:
-        #     x_usable = x
-        #     y_usable = y
         bsz = x.shape[0]
         choices = torch.tile(torch.arange(bsz), (bsz, 1)).to(x.device)
         choices.fill_diagonal_(-1.)
@@ -151,7 +146,10 @@ class TripletSILoss:
         # assert ((choices == torch.arange(bsz).to(x.device)).sum() == 0).item(), "Triplet loss choices are incorrect"
         y_neg = y[choices]
         # Compute error
-        non_nulls = labels != self.null_class_idx
+        if self.dont_contrast_on_unconditional:
+            non_nulls = labels != self.null_class_idx
+        else:
+            non_nulls = torch.ones_like(labels, dtype=torch.bool)
         neg_elem_error = ((x - y_neg) ** 2) * non_nulls.to(x.device).unsqueeze(-1)
         neg_elem_error = neg_elem_error
         neg_error = mean_flat(neg_elem_error) * bsz / non_nulls.sum() # rescale to account for null classes
