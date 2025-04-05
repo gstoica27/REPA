@@ -184,6 +184,9 @@ def create_experiment_name(args):
     else:
         raise NotImplementedError()
     
+    if 'trip' in denoising_name and args.is_class_conditioned:
+        denoising_name = 'cc' + denoising_name
+    
     coeff_str = str(args.denoising_temp).replace('.', 'p').capitalize()
     exp_name += f"-{denoising_name}Temp{coeff_str}"
     
@@ -294,6 +297,7 @@ def main(args, exp_name):
             denoising_weight=args.denoising_temp,
             null_class_idx=args.num_classes,
             dont_contrast_on_unconditional=args.dont_contrast_on_unconditional,
+            is_class_conditioned=args.is_class_conditioned
         )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -581,6 +585,8 @@ def parse_args(input_args=None):
     parser.add_argument("--denoising-temp", default=1.0, type=float, help="Temperature for the denoising loss.")
     parser.add_argument("--dont-contrast-on-unconditional", action=argparse.BooleanOptionalAction, default=False,
                         help="If True, apply contrastive loss on unconditional samples.")
+    parser.add_argument("--is-class-conditioned", action=argparse.BooleanOptionalAction, default=False, 
+                        help="If True, apply class conditioning for triplet loss (only for triplet loss). ")
     
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -617,12 +623,12 @@ if __name__ == "__main__":
     #     )
     exp_name = create_experiment_name(args)
     # print("The experiment name is: ", exp_name)
-    try:
-        main(args, exp_name)
-    except:
-        print("Retrying....")
-        main(args, exp_name)
-    # main(args, exp_name)
+    # try:
+    #     main(args, exp_name)
+    # except:
+    #     print("Retrying....")
+    #     main(args, exp_name)
+    main(args, exp_name)
 
 
 

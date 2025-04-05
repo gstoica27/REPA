@@ -79,6 +79,27 @@ def choose_denoising_loss(name):
         raise NotImplementedError("Denoising loss {} not implemented.".format(name))
 
 
+def class_conditioned_sampling(labels):
+    bsz = labels.shape[0]
+    mask = ~(labels[None] == labels[:, None])
+    # choices[mask] = -1 # remove self-sampling
+    # Now randomly sample from the remaining choices
+    weights = mask.float()
+    weights_sum = weights.sum(dim=1, keepdim=True)
+    if (weights_sum == 0).any():
+        # In case there are no valid choices, fallback to uniform sampling
+        choices = torch.randint(0, bsz, (bsz,), device=labels.device)
+        # weights = torch.ones_like(choices).float()
+    else:
+        # Normalize weights to avoid division by zero
+        weights = weights / weights_sum.clamp(min=1)
+        # Sample from the available choices based on weights
+        choices = torch.multinomial(weights, 1).squeeze(1)
+    # Ensure no self-sampling
+    assert (choices != torch.arange(bsz, device=labels.device)).all(), "Self-sampling detected in class_conditioned_sampling"
+    return choices
+
+
 class TripletSILoss:
     def __init__(
             self,
@@ -92,7 +113,8 @@ class TripletSILoss:
             denoising_type="mean",
             denoising_weight=1.0,
             null_class_idx=None,
-            dont_contrast_on_unconditional=False
+            dont_contrast_on_unconditional=False,
+            is_class_conditioned=False
             ):
         self.prediction = prediction
         self.weighting = weighting
@@ -103,6 +125,7 @@ class TripletSILoss:
         self.latents_bias = latents_bias
         self.null_class_idx = null_class_idx
         self.dont_contrast_on_unconditional = dont_contrast_on_unconditional
+        self.is_class_conditioned = is_class_conditioned
         if not self.dont_contrast_on_unconditional:
             assert self.null_class_idx is not None, "Null class index must be provided"
         
@@ -112,6 +135,11 @@ class TripletSILoss:
         elif denoising_type == 'triplet_same_noise':
             print('Using triplet same noise loss')
             self.denoising_fn = self.triplet_same_noise
+        
+        if self.is_class_conditioned:
+            print("Using class-conditioned triplet loss")
+        else:
+            print("Using standard triplet loss")
             
         self.temperature = denoising_weight
         print(f"Using temperature of: {self.temperature}")
@@ -163,31 +191,35 @@ class TripletSILoss:
             "contrastive_loss": neg_error
         }
     
-    def compute_triplet_loss(self, x, y):
+    def compute_class_conditioned_triplet_loss(self, x, y, labels=None):
+        negative_idxs = class_conditioned_sampling(labels)
+        bsz = x.shape[0]
         x = x.flatten(1)
         y = y.flatten(1)
-        error = ((x[None] - y[:, None]) ** 2).mean(-1)
-        indices = torch.arange(x.shape[0]).to(x.device)
-        choices = torch.tensor([indices[indices != i][torch.randperm(x.shape[0]-1)[0]] for i in range(x.shape[0])])
-        assert ((choices == indices.cpu()).sum() == 0).item(), "Triplet loss choices are incorrect"
-        negatives = error[np.arange(x.shape[0]), choices]
-        positives = error.diagonal()
-        loss = positives - self.temperature * negatives
-        # return loss
+        # Obtain positive samples and compute error
+        y_pos = y
+        pos_error = mean_flat((x - y_pos) ** 2)
+        y_neg = y[negative_idxs]
+        if self.dont_contrast_on_unconditional:
+            non_nulls = labels != self.null_class_idx
+        else:
+            non_nulls = torch.ones_like(labels, dtype=torch.bool)
+        neg_elem_error = ((x - y_neg) ** 2) * non_nulls.to(x.device).unsqueeze(-1)
+        neg_error = mean_flat(neg_elem_error) * bsz / non_nulls.sum() # rescale to account for null classes
+        # Compute loss
+        loss = pos_error - self.temperature * neg_error
         return {
             "loss": loss,
-            "flow_loss": positives,
-            "contrastive_loss": negatives
+            "flow_loss": pos_error,
+            "contrastive_loss": neg_error
         }
     
     def triplet_any_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None):
         model_target = d_alpha_t * target_images + d_sigma_t * noises
-        # loss = self.compute_triplet_loss(pred, model_target)
-        loss = self.compute_triplet_loss_efficiently(pred, model_target, labels)
-        # check = triplet_mse_loss(pred, model_target, temperature=self.temperature, choices=choices)
-        # # assert torch.allclose(loss, check), "Triplet loss check failed"
-        # if not torch.allclose(loss, check):
-        #     pdb.set_trace()
+        if self.is_class_conditioned:
+            loss = self.compute_class_conditioned_triplet_loss(pred, model_target, labels)
+        else:
+            loss = self.compute_triplet_loss_efficiently(pred, model_target, labels)
         return loss
     
     def triplet_same_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None):
