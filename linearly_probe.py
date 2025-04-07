@@ -145,6 +145,7 @@ def main(args):
     model.projectors = nn.ModuleList([nn.Identity() for z_dim in model.z_dims])
     model = model.to(device)
     model.eval()
+    requires_grad(model, False)
 
     probe = torch.nn.Linear(model.hidden_size, args.num_classes).to(device)
     optimizer = torch.optim.AdamW(
