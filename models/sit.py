@@ -190,6 +190,7 @@ class SiT(nn.Module):
         self.num_classes = num_classes
         self.z_dims = z_dims
         self.encoder_depth = encoder_depth
+        self.hidden_size = hidden_size
 
         self.x_embedder = PatchEmbed(
             input_size, patch_size, in_channels, hidden_size, bias=True
