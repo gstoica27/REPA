@@ -1,4 +1,5 @@
 import os
+import pdb
 import json
 import random
 import glob
@@ -137,8 +138,6 @@ class MSCOCOFeatureDataset(Dataset):
     # the image features are got through sample
     def __init__(self, root):
         self.root = root
-        # self.images_
-        
         self.num_data, self.n_captions = get_feature_dir_info(root)
 
     def __len__(self):

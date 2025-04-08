@@ -87,4 +87,5 @@ class SILoss:
                 proj_loss += mean_flat(-(z_j * z_tilde_j).sum(dim=-1))
         proj_loss /= (len(zs) * bsz)
 
-        return denoising_loss, proj_loss
+        # return denoising_loss, proj_loss
+        return {'loss': denoising_loss}, proj_loss

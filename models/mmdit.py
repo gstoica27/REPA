@@ -1,5 +1,6 @@
 ### This file contains impls for MM-DiT, the core model component of SD3
 
+import pdb
 import math
 from typing import Dict, Optional
 import numpy as np
@@ -98,7 +99,9 @@ class PatchEmbed(nn.Module):
 def modulate(x, shift, scale):
     if shift is None:
         shift = torch.zeros_like(scale)
+    
     return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+    
 
 
 #################################################################################
@@ -661,7 +664,7 @@ class MMDiT(nn.Module):
         B, L, D = x.shape
         for i, block in enumerate(self.joint_blocks):
             context, x = block(context, x, c=c_mod)
-
+            
             if (i + 1) == self.encoder_depth:
                 if detach:
                     x_ = x.clone().detach()

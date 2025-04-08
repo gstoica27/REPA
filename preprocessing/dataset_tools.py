@@ -99,7 +99,7 @@ def open_image_folder(source_dir, *, max_images: Optional[int]) -> tuple[int, It
             yield ImageEntry(img=img, label=labels.get(arch_fnames[fname]))
             if idx >= max_idx - 1:
                 break
-    return max_idx, iterate_images()
+    return max_idx, iterate_images(), input_images
 
 #----------------------------------------------------------------------------
 
@@ -124,7 +124,7 @@ def open_image_zip(source, *, max_images: Optional[int]) -> tuple[int, Iterator[
                 yield ImageEntry(img=img, label=labels.get(fname))
                 if idx >= max_idx - 1:
                     break
-    return max_idx, iterate_images()
+    return max_idx, iterate_images(), input_images
 
 #----------------------------------------------------------------------------
 
@@ -260,11 +260,52 @@ def cmdline():
 #----------------------------------------------------------------------------
 
 @cmdline.command()
+@click.option('--source-image-dir',     help='Input directory or archive name', metavar='PATH',   type=str, required=True)
+# @click.option('--target-image-dir',       help='Output directory or archive name', metavar='PATH',  type=str, required=True)
+@click.option('--save-path',       help='Path to save new caption dict', metavar='PATH',  type=str, required=True)
+@click.option('--caption-path',       help='Path of original caption dict', metavar='PATH',  type=str, required=True)
+@click.option('--max-images', help='Maximum number of images to output', metavar='INT', type=int)
+
+def convert_captions_json(
+    source_image_dir: str,
+    # target_image_dir: str,
+    caption_path: str,
+    save_path: str,
+    max_images: Optional[int],
+):
+    import json
+    from tqdm import tqdm
+    # PIL.Image.init()
+    # if dest == '':
+    #     raise click.ClickException('--dest output filename or directory must not be an empty string')
+    captions = json.load(open(caption_path, "r"))
+    input_images = os.listdir(source_image_dir)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    mapping = {}
+    for idx, input_image in tqdm(enumerate(input_images)):
+        # idx_str = f'{idx:08d}'
+        # archive_fname = f'img{idx_str}.png'
+        # archive_fname = f'{idx}.png'
+        # mapping[input_image] = os.path.join(archive_dir, archive_fname)
+        mapping[os.path.basename(input_image)] = f'{idx}.png'
+    # import pdb; pdb.set_trace()
+    captions_images = captions['images']
+    for elem_dict in captions_images:
+        elem_dict['file_name'] = mapping[elem_dict['file_name']]
+    
+    with open(save_path, 'w') as f:
+        json.dump(captions, f)
+    # np.savetxt(save, mapping)
+
+#----------------------------------------------------------------------------
+
+@cmdline.command()
 @click.option('--source',     help='Input directory or archive name', metavar='PATH',   type=str, required=True)
 @click.option('--dest',       help='Output directory or archive name', metavar='PATH',  type=str, required=True)
 @click.option('--max-images', help='Maximum number of images to output', metavar='INT', type=int)
 @click.option('--transform',  help='Input crop/resize mode', metavar='MODE',            type=click.Choice(['center-crop', 'center-crop-wide', 'center-crop-dhariwal']))
 @click.option('--resolution', help='Output resolution (e.g., 512x512)', metavar='WxH',  type=parse_tuple)
+
 
 def convert(
     source: str,

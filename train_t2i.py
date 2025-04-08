@@ -151,6 +151,9 @@ def create_experiment_name(args):
     else:
         raise NotImplementedError()
     
+    if 'trip' in denoising_name and args.is_class_conditioned:
+        denoising_name = 'cc' + denoising_name
+    
     coeff_str = str(args.denoising_temp).replace('.', 'p')
     exp_name += f"-{denoising_name}Temp{coeff_str}"
     
@@ -250,6 +253,9 @@ def main(args, exp_name):
             weighting=args.weighting,
             denoising_type=args.denoising_type,
             denoising_weight=args.denoising_temp,
+            null_class_idx=args.num_classes,
+            dont_contrast_on_unconditional=args.dont_contrast_on_unconditional,
+            is_class_conditioned=args.is_class_conditioned
         )
         
     else:
@@ -257,7 +263,7 @@ def main(args, exp_name):
         # Raise NotImplementedError("Denoising type not implemented")
     
     if accelerator.is_main_process:
-        logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
+        logger.info(f"Model Parameters: {sum(p.numel() for p in model.parameters()):,}")
     
     # Setup optimizer (we used default Adam betas=(0.9, 0.999) and a constant learning rate of 1e-4 in our paper):
     if args.allow_tf32:
@@ -273,6 +279,7 @@ def main(args, exp_name):
     )    
     
     # Setup data:
+    # train_dataset = MSCOCO256Features(encoding_root=args.data_dir, image_root=args.image_dir).train
     train_dataset = MSCOCO256Features(path=args.data_dir).train
     local_batch_size = int(args.batch_size // accelerator.num_processes)
     train_dataloader = DataLoader(
@@ -327,18 +334,20 @@ def main(args, exp_name):
     )
 
     # Labels to condition the model with (feel free to change):
-    sample_batch_size = 64 // accelerator.num_processes
+    sample_batch_size = args.batch_size // accelerator.num_processes
     _, gt_xs, _ = next(iter(train_dataloader))
+    # _, _, gt_xs, _ = next(iter(train_dataloader))
     gt_xs = gt_xs[:sample_batch_size]
     gt_xs = sample_posterior(
         gt_xs.to(device), latents_scale=latents_scale, latents_bias=latents_bias
         )
     # Create sampling noise:
     xT = torch.randn((sample_batch_size, 4, latent_size, latent_size), device=device)
-        
     for epoch in range(args.epochs):
         model.train()
-        for raw_image, x, context, raw_captions in train_dataloader:
+        # TODO/NOTE: I think "raw_caption" is wrongly placed here. 
+        # for raw_image, x, context, raw_captions in train_dataloader:
+        for raw_image, x, context in train_dataloader:
             if global_step == 0:
                 ys = context[:sample_batch_size].to(device) # handed-coded
             raw_image = raw_image.to(device)
@@ -360,8 +369,8 @@ def main(args, exp_name):
 
             with accelerator.accumulate(model):
                 model_kwargs = dict(context=context)
-                loss, proj_loss = loss_fn(model, x, model_kwargs, zs=zs)
-                loss_mean = loss.mean()
+                loss_dict, proj_loss = loss_fn(model, x, model_kwargs, zs=zs)
+                loss_mean = loss_dict["loss"].mean()
                 proj_loss_mean = proj_loss.mean()
                 loss = loss_mean + proj_loss_mean * args.proj_coeff
                     
@@ -423,8 +432,11 @@ def main(args, exp_name):
             logs = {
                 "loss": accelerator.gather(loss_mean).mean().detach().item(), 
                 "proj_loss": accelerator.gather(proj_loss_mean).mean().detach().item(),
-                "grad_norm": accelerator.gather(grad_norm).mean().detach().item()
+                "grad_norm": accelerator.gather(grad_norm).mean().detach().item(),
             }
+            if 'contrastive_loss' in loss_dict:
+                logs["flow_loss"] = accelerator.gather(loss_dict["flow_loss"]).mean().detach().item(),
+                logs["contrastive_loss"] = accelerator.gather(loss_dict["contrastive_loss"]).mean().detach().item()
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
 
@@ -460,6 +472,7 @@ def parse_args(input_args=None):
 
     # dataset
     parser.add_argument("--data-dir", type=str, default="../data/coco256_features")
+    # parser.add_argument("--image-dir", type=str, default="../data/coco")
     parser.add_argument("--resolution", type=int, choices=[256, 512], default=256)
     parser.add_argument("--batch-size", type=int, default=256)
 
@@ -508,6 +521,10 @@ def parse_args(input_args=None):
         # ]
     )
     parser.add_argument("--denoising-temp", type=float, default=1.0)
+    parser.add_argument("--dont-contrast-on-unconditional", action=argparse.BooleanOptionalAction, default=False,
+                        help="If True, apply contrastive loss on unconditional samples.")
+    parser.add_argument("--is-class-conditioned", action=argparse.BooleanOptionalAction, default=False, 
+                        help="If True, apply class conditioning for triplet loss (only for triplet loss). ")
 
     if input_args is not None:
         args = parser.parse_args(input_args)
