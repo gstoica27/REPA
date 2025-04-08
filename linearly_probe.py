@@ -250,7 +250,7 @@ def main(args):
             if global_step % args.checkpointing_steps == 0 and global_step > 0:
                 if accelerator.is_main_process:
                     print(
-                        f"Train Epoch: {epoch} {progress_message}\t"
+                        f"Train Step: {global_step}\t"
                         f"Loss: {loss.item():.6f}"
                         f"LR {optimizer.param_groups[0]['lr']:.5f}"
                     )
