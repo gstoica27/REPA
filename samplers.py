@@ -63,6 +63,8 @@ def euler_sampler(
         record_intermediate_steps_freq=None,
         record_trajectory_structure=False,
         trajectory_structure_type=None,
+        bias=None,
+        bias_weight=0.0
         ):
     # setup conditioning
     if cfg_scale > 1.0:
@@ -95,6 +97,10 @@ def euler_sampler(
             d_cur = model(
                 model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
                 )[0].to(torch.float64)
+            
+            if bias is not None:
+                d_cur = (1 - bias_weight) * d_cur + bias_weight * bias
+
             if cfg_scale > 1. and t_cur <= guidance_high and t_cur >= guidance_low:
                 d_cur_cond, d_cur_uncond = d_cur.chunk(2)
                 d_cur = d_cur_uncond + cfg_scale * (d_cur_cond - d_cur_uncond)                
@@ -155,6 +161,9 @@ def euler_maruyama_sampler(
         record_intermediate_steps_freq=None,
         record_trajectory_structure=False,
         trajectory_structure_type=None,
+        bias=None,
+        bias_interp_weight=0.0,
+        subtract_bias=False,
         ):
     # setup conditioning
     if cfg_scale > 1.0:
@@ -197,6 +206,14 @@ def euler_maruyama_sampler(
             v_cur = model(
                 model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
                 )[0].to(torch.float64)
+
+            pdb.set_trace()
+            if bias is not None:
+                if subtract_bias:
+                    v_cur = (1 - bias_interp_weight) * v_cur - bias_interp_weight * bias
+                else:
+                    v_cur = (1 - bias_interp_weight) * v_cur + bias_interp_weight * bias
+            
             s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)
             d_cur = v_cur - 0.5 * diffusion * s_cur
             if cfg_scale > 1. and t_cur <= guidance_high and t_cur >= guidance_low:

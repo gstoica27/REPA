@@ -100,6 +100,12 @@ def main(args):
         print(f"Saving .png samples at {sample_folder_dir}")
     dist.barrier()
 
+    if args.bias_path is not None:
+        # Load bias
+        bias = torch.load(args.bias_path, map_location=f'cuda:{device}').to(torch.float32)[None]
+    else:
+        bias = None
+
     # Figure out how many samples we need to generate on each GPU and how many iterations we need to run:
     n = args.per_proc_batch_size
     global_batch_size = n * dist.get_world_size()
@@ -132,6 +138,9 @@ def main(args):
             guidance_low=args.guidance_low,
             guidance_high=args.guidance_high,
             path_type=args.path_type,
+            bias=bias,
+            bias_interp_weight=args.bias_weight,
+            subtract_bias=args.subtract_bias
         )
         with torch.no_grad():
             if args.mode == "sde":
@@ -208,6 +217,10 @@ if __name__ == "__main__":
 
     # will be deprecated
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False) # only for ode
+    # Add bias to model
+    parser.add_argument('--bias-path', type=str, default=None)
+    parser.add_argument('--bias-weight', type=float, default=0.05)
+    parser.add_argument('--subtract-bias', action=argparse.BooleanOptionalAction, default=False)
 
 
     args = parser.parse_args()
