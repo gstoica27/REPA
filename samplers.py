@@ -207,7 +207,6 @@ def euler_maruyama_sampler(
                 model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
                 )[0].to(torch.float64)
 
-            pdb.set_trace()
             if bias is not None:
                 if subtract_bias:
                     v_cur = (1 - bias_interp_weight) * v_cur - bias_interp_weight * bias
