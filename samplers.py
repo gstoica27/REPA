@@ -265,6 +265,13 @@ def euler_maruyama_sampler(
     v_cur = model(
         model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
         )[0].to(torch.float64)
+    
+    if bias is not None:
+        if subtract_bias:
+            v_cur = (1 - bias_interp_weight) * v_cur - bias_interp_weight * bias
+        else:
+            v_cur = (1 - bias_interp_weight) * v_cur + bias_interp_weight * bias
+
     s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)
     diffusion = compute_diffusion(t_cur)
     d_cur = v_cur - 0.5 * diffusion * s_cur
