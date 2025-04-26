@@ -135,6 +135,9 @@ class TripletSILoss:
         elif denoising_type == 'triplet_same_noise':
             print('Using triplet same noise loss')
             self.denoising_fn = self.triplet_same_noise
+        elif denoising_type == 'triplet_target_conditioned':
+            print('Using triplet target conditioned loss')
+            self.denoising_fn = self.compute_target_conditioned_triplet_loss
         
         if self.is_class_conditioned:
             print("Using class-conditioned triplet loss")
@@ -214,7 +217,55 @@ class TripletSILoss:
             "contrastive_loss": neg_error
         }
     
-    def triplet_any_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None):
+    def sample_negatives_unconditionally(self, candidates):
+        bsz = candidates.shape[0]
+        choices = torch.tile(torch.arange(bsz), (bsz, 1)).to(candidates.device)
+        choices.fill_diagonal_(-1.)
+        choices = choices.sort(dim=1)[0][:, 1:]
+        choices = choices[torch.arange(bsz), torch.randint(0, bsz-1, (bsz,))]
+        return choices
+    
+    def sample_negatives_conditionally(self, candidates):
+        return class_conditioned_sampling(candidates)
+    
+    def compute_target_conditioned_triplet_loss(
+        self, pred, target_images, d_alpha_t, d_sigma_t, 
+        noises, noised_images, time, labels=None, **kwargs
+    ):
+        # pdb.set_trace()
+        # Compute the target trajectory
+        model_target = d_alpha_t * target_images + d_sigma_t * noises
+        # Compute the contrastive trajectory
+        # Get sampling indices
+        if self.is_class_conditioned:
+            choices = self.sample_negatives_conditionally(labels)
+        else:
+            choices = self.sample_negatives_unconditionally(labels)
+        # pdb.set_trace()
+        # Get negative targets
+        negative_targets = target_images[choices]
+        # Compute negative trajectory
+        negative_model_target = (1 / time) * (noised_images - negative_targets)
+        # Compute weights based on whether to contrast on unconditional
+        if self.dont_contrast_on_unconditional:
+            non_nulls = labels != self.null_class_idx
+        else:
+            non_nulls = torch.ones_like(labels, dtype=torch.bool)
+        # pdb.set_trace()
+        # Compute the loss
+        pos_loss = mean_flat((pred - model_target) ** 2)
+        # neg_loss = mean_flat((pred - negative_model_target) ** 2)
+        neg_elem_error = ((pred - negative_model_target) ** 2).flatten(1) * non_nulls.to(pred.device).unsqueeze(-1)
+        neg_loss = - mean_flat(neg_elem_error) * pred.shape[0] / non_nulls.sum() # rescale to account for null classes
+        # Compute the final loss
+        loss = pos_loss + self.temperature * neg_loss
+        return {
+            "loss": loss,
+            "flow_loss": pos_loss,
+            "contrastive_loss": neg_loss
+        }
+        
+    def triplet_any_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None, **kwargs):
         model_target = d_alpha_t * target_images + d_sigma_t * noises
         if self.is_class_conditioned:
             loss = self.compute_class_conditioned_triplet_loss(pred, model_target, labels)
@@ -257,6 +308,8 @@ class TripletSILoss:
             d_sigma_t=d_sigma_t, 
             noises=noises,
             labels=labels,
+            noised_images=model_input,
+            time=time_input, 
         )
         # denoising_loss = self.denoising_fn(model_output, model_target, temperature=self.denoising_weight, cls=model_kwargs['y'])
         # projection loss

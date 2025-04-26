@@ -181,6 +181,8 @@ def create_experiment_name(args):
         # denoising_name = 'cctripmse'
     elif args.denoising_type == 'triplet_same_noise':
         denoising_name = 'tripsame'
+    elif args.denoising_type == 'triplet_target_conditioned':
+        denoising_name = 'triptarget'
     else:
         raise NotImplementedError()
     
