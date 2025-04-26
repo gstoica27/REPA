@@ -363,7 +363,7 @@ def main(args,):
                 x.to(device).to(torch.float64)
             )#.mean().detach().item()
             # print(gathered_bias.shape)
-            estimated_bias += gathered_bias.sum(dim=0) / len(train_dataloader.dataset)
+            estimated_bias += gathered_bias.mean(dim=0) / args.max_train_steps
             progress_bar.update(1)
             global_step += 1      
             # with accelerator.accumulate(model):
