@@ -255,7 +255,10 @@ class TripletSILoss:
         # Compute the loss
         pos_loss = mean_flat((pred - model_target) ** 2)
         # neg_loss = mean_flat((pred - negative_model_target) ** 2)
-        neg_elem_error = ((pred - negative_model_target) ** 2).flatten(1) * non_nulls.to(pred.device).unsqueeze(-1)
+        pred_normalized = F.normalize(pred.flatten(1), dim=-1)
+        negative_normalized = F.normalize(negative_model_target.flatten(1), dim=-1)
+        # Compute the contrastive loss
+        neg_elem_error = ((pred_normalized - negative_normalized) ** 2) * non_nulls.to(pred.device).unsqueeze(-1)
         neg_loss = - mean_flat(neg_elem_error) * pred.shape[0] / non_nulls.sum() # rescale to account for null classes
         # Compute the final loss
         loss = pos_loss + self.temperature * neg_loss
