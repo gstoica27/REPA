@@ -188,6 +188,8 @@ def create_experiment_name(args):
     
     if 'trip' in denoising_name and args.is_class_conditioned:
         denoising_name = 'cc' + denoising_name
+    if args.and_weigh_on_time:
+        denoising_name = 'withtime' + denoising_name
     
     coeff_str = str(args.denoising_temp).replace('.', 'p').capitalize()
     exp_name += f"-{denoising_name}Temp{coeff_str}"
@@ -589,6 +591,8 @@ def parse_args(input_args=None):
                         help="If True, apply contrastive loss on unconditional samples.")
     parser.add_argument("--is-class-conditioned", action=argparse.BooleanOptionalAction, default=False, 
                         help="If True, apply class conditioning for triplet loss (only for triplet loss). ")
+    parser.add_argument('--and-weigh-on-time', action=argparse.BooleanOptionalAction, default=False,
+                        help="If True, apply time weighting for triplet loss (only for triplet loss).")
     
     if input_args is not None:
         args = parser.parse_args(input_args)

@@ -114,7 +114,8 @@ class TripletSILoss:
             denoising_weight=1.0,
             null_class_idx=None,
             dont_contrast_on_unconditional=False,
-            is_class_conditioned=False
+            is_class_conditioned=False,
+            weigh_on_time=False,
             ):
         self.prediction = prediction
         self.weighting = weighting
@@ -126,6 +127,7 @@ class TripletSILoss:
         self.null_class_idx = null_class_idx
         self.dont_contrast_on_unconditional = dont_contrast_on_unconditional
         self.is_class_conditioned = is_class_conditioned
+        self.weigh_on_time = weigh_on_time
         if not self.dont_contrast_on_unconditional:
             assert self.null_class_idx is not None, "Null class index must be provided"
         
