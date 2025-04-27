@@ -261,6 +261,9 @@ class TripletSILoss:
         negative_normalized = F.normalize(negative_model_target.flatten(1), dim=-1)
         # Compute the contrastive loss
         neg_elem_error = ((pred_normalized - negative_normalized) ** 2) * non_nulls.to(pred.device).unsqueeze(-1)
+        pdb.set_trace()
+        if self.weigh_on_time:
+            neg_elem_error = neg_elem_error * time
         neg_loss = - mean_flat(neg_elem_error) * pred.shape[0] / non_nulls.sum() # rescale to account for null classes
         # Compute the final loss
         loss = pos_loss + self.temperature * neg_loss

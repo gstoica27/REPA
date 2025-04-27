@@ -301,7 +301,8 @@ def main(args, exp_name):
             denoising_weight=args.denoising_temp,
             null_class_idx=args.num_classes,
             dont_contrast_on_unconditional=args.dont_contrast_on_unconditional,
-            is_class_conditioned=args.is_class_conditioned
+            is_class_conditioned=args.is_class_conditioned,
+            weigh_on_time=args.and_weigh_on_time,
         )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
