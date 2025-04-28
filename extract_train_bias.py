@@ -363,9 +363,14 @@ def main(args,):
                 x.to(device).to(torch.float64)
             )#.mean().detach().item()
             # print(gathered_bias.shape)
-            estimated_bias += gathered_bias.mean(dim=0) / args.max_train_steps
+            # pdb.set_trace()
+            estimated_bias = (estimated_bias * global_step + gathered_bias.mean(dim=0)) / (global_step + 1)
             progress_bar.update(1)
-            global_step += 1      
+            global_step += 1
+
+            if accelerator.is_main_process and global_step % 100 == 0:
+                # print norm of estimated bias
+                print("Estimated bias: ", (estimated_bias).norm())
             # with accelerator.accumulate(model):
             #     model_kwargs = dict(y=labels)
             #     loss_dict, proj_loss = loss_fn(model, x, model_kwargs, zs=zs)
