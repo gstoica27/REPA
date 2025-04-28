@@ -247,7 +247,8 @@ class TripletSILoss:
         # Get negative targets
         negative_targets = target_images[choices]
         # Compute negative trajectory
-        negative_model_target = (1 / time) * (noised_images - negative_targets)
+        # negative_model_target = (1 / time) * (noised_images - negative_targets)
+        negative_model_target = (noised_images - negative_targets)
         # Compute weights based on whether to contrast on unconditional
         if self.dont_contrast_on_unconditional:
             non_nulls = labels != self.null_class_idx
