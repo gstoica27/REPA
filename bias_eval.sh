@@ -703,6 +703,8 @@ gantry run \
     --workspace ai2/structured_diffusion \
     --cluster ai2/saturn-cirrascale \
     --cluster ai2/jupiter-cirrascale-2 \
+    --cluster ai2/titan-cirrascale \ 
+    --cluster ai2/rhea-cirrascale \
     --retries 3 \
     --not-preemptible \
     -- torchrun \
