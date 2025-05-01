@@ -620,8 +620,8 @@ gantry run \
     --num-steps=200 \
     --cfg-scale=1.85 \
     --guidance-high=0.65 \
-    --sample-dir /weka/oe-training-default/georges/samples/biased-cfg2/add-raw-bias/repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05/cfg-1p85-guidance-0p65-nfe-200-lambda0p1 \
-    --bias-path /weka/prior-default/georges/research/REPA/biases/imnet256_raw_bias.pt \
+    --sample-dir /weka/oe-training-default/georges/samples/biased-cfg2/add-latent-bias/repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05/cfg-1p85-guidance-0p65-nfe-200-lambda0p1 \
+    --bias-path /weka/prior-default/georges/research/REPA/biases/imnet256_latent_bias.pt \
     --bias-weight 0.1
 
 gantry run \
@@ -652,6 +652,6 @@ gantry run \
     --num-steps=200 \
     --cfg-scale=1.85 \
     --guidance-high=0.65 \
-    --sample-dir /weka/oe-training-default/georges/samples/biased-cfg2/add-raw-bias/repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05/cfg-1p85-guidance-0p65-nfe-200-lambda0p15 \
-    --bias-path /weka/prior-default/georges/research/REPA/biases/imnet256_raw_bias.pt \
+    --sample-dir /weka/oe-training-default/georges/samples/biased-cfg2/add-latent-bias/repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05/cfg-1p85-guidance-0p65-nfe-200-lambda0p15 \
+    --bias-path /weka/prior-default/georges/research/REPA/biases/imnet256_latent_bias.pt \
     --bias-weight 0.15
