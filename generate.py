@@ -140,7 +140,8 @@ def main(args):
             path_type=args.path_type,
             bias=bias,
             bias_interp_weight=args.bias_weight,
-            subtract_bias=args.subtract_bias
+            subtract_bias=args.subtract_bias,
+            is_baseline=args.is_baseline
         )
         with torch.no_grad():
             if args.mode == "sde":
@@ -221,6 +222,7 @@ if __name__ == "__main__":
     parser.add_argument('--bias-path', type=str, default=None)
     parser.add_argument('--bias-weight', type=float, default=0.05)
     parser.add_argument('--subtract-bias', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--is-baseline', action=argparse.BooleanOptionalAction, default=False)
 
 
     args = parser.parse_args()

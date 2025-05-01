@@ -164,6 +164,7 @@ def euler_maruyama_sampler(
         bias=None,
         bias_interp_weight=0.0,
         subtract_bias=False,
+        is_baseline=False,
         ):
     # setup conditioning
     if cfg_scale > 1.0:
@@ -208,10 +209,16 @@ def euler_maruyama_sampler(
                 )[0].to(torch.float64)
 
             if bias is not None:
-                if subtract_bias:
-                    v_cur = (1 - bias_interp_weight) * v_cur - bias_interp_weight * bias
+                if not is_baseline:
+                    if subtract_bias:
+                        v_cur = (1 - bias_interp_weight) * v_cur - bias_interp_weight * bias
+                    else:
+                        v_cur = (1 - bias_interp_weight) * v_cur + bias_interp_weight * bias
                 else:
-                    v_cur = (1 - bias_interp_weight) * v_cur + bias_interp_weight * bias
+                    if subtract_bias:
+                        v_cur = (v_cur + bias_interp_weight * bias) / (1 - bias_interp_weight)
+                    else:
+                        v_cur = (v_cur - bias_interp_weight * bias) / (1 + bias_interp_weight)
             
             s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)
             d_cur = v_cur - 0.5 * diffusion * s_cur
@@ -267,10 +274,16 @@ def euler_maruyama_sampler(
         )[0].to(torch.float64)
     
     if bias is not None:
-        if subtract_bias:
-            v_cur = (1 - bias_interp_weight) * v_cur - bias_interp_weight * bias
+        if not is_baseline:
+            if subtract_bias:
+                v_cur = (1 - bias_interp_weight) * v_cur - bias_interp_weight * bias
+            else:
+                v_cur = (1 - bias_interp_weight) * v_cur + bias_interp_weight * bias
         else:
-            v_cur = (1 - bias_interp_weight) * v_cur + bias_interp_weight * bias
+            if subtract_bias:
+                v_cur = (v_cur + bias_interp_weight * bias) / (1 - bias_interp_weight)
+            else:
+                v_cur = (v_cur - bias_interp_weight * bias) / (1 - bias_interp_weight)
 
     s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)
     diffusion = compute_diffusion(t_cur)
