@@ -695,7 +695,7 @@
 gantry run \
     --budget ai2/prior \
     --name "SiTXL2-BL-Is-Bias-The-Answer-FID50K-Eval-Subtract-Latent-Bias-Ours-CFG-NFE-200-Lambda0p05" \
-    --priority low \
+    --priority normal \
     --gpus 8 \
     --weka "prior-default:/weka/prior-default" \
     --weka "oe-training-default:/weka/oe-training-default" \
