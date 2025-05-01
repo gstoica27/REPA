@@ -658,44 +658,44 @@
 #     --bias-path /weka/prior-default/georges/research/REPA/biases/imnet256_latent_bias.pt \
 #     --bias-weight 0.15
 
-gantry run \
-    --budget ai2/prior \
-    --name "SiTXL2-BL-Is-Bias-The-Answer-FID50K-Eval-Add-Latent-Bias-Ours-CFG-NFE-200-Lambda0p05" \
-    --priority high \
-    --gpus 8 \
-    --weka "prior-default:/weka/prior-default" \
-    --weka "oe-training-default:/weka/oe-training-default" \
-    --conda environment.yml \
-    --workspace ai2/structured_diffusion \
-    --cluster ai2/saturn-cirrascale \
-    --cluster ai2/jupiter-cirrascale-2 \
-    --retries 3 \
-    --not-preemptible \
-    -- torchrun \
-    --nnodes=1 \
-    --nproc_per_node=8 \
-    --master-port 29501 \
-    generate.py \
-    --model SiT-XL/2 \
-    --num-fid-samples 50000 \
-    --ckpt /weka/oe-training-default/georges/checkpoints/REPA/exps/linear-dinov2-b-enc8/checkpoints/0400000.pt \
-    --path-type=linear \
-    --encoder-depth=8 \
-    --projector-embed-dims=768 \
-    --per-proc-batch-size=64 \
-    --mode=sde \
-    --num-steps=200 \
-    --cfg-scale=1.85 \
-    --guidance-high=0.65 \
-    --sample-dir /weka/oe-training-default/georges/samples/biased-cfg2/add-latent-bias/repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05/cfg-1p85-guidance-0p65-nfe-200-lambda0p15 \
-    --bias-path /weka/prior-default/georges/research/REPA/biases/imnet256_latent_bias.pt \
-    --bias-weight 0.05 \
-    --is-baseline
+# gantry run \
+#     --budget ai2/prior \
+#     --name "SiTXL2-BL-Is-Bias-The-Answer-FID50K-Eval-Add-Latent-Bias-Ours-CFG-NFE-200-Lambda0p05" \
+#     --priority high \
+#     --gpus 8 \
+#     --weka "prior-default:/weka/prior-default" \
+#     --weka "oe-training-default:/weka/oe-training-default" \
+#     --conda environment.yml \
+#     --workspace ai2/structured_diffusion \
+#     --cluster ai2/saturn-cirrascale \
+#     --cluster ai2/jupiter-cirrascale-2 \
+#     --retries 3 \
+#     --not-preemptible \
+#     -- torchrun \
+#     --nnodes=1 \
+#     --nproc_per_node=8 \
+#     --master-port 29501 \
+#     generate.py \
+#     --model SiT-XL/2 \
+#     --num-fid-samples 50000 \
+#     --ckpt /weka/oe-training-default/georges/checkpoints/REPA/exps/linear-dinov2-b-enc8/checkpoints/0400000.pt \
+#     --path-type=linear \
+#     --encoder-depth=8 \
+#     --projector-embed-dims=768 \
+#     --per-proc-batch-size=64 \
+#     --mode=sde \
+#     --num-steps=200 \
+#     --cfg-scale=1.85 \
+#     --guidance-high=0.65 \
+#     --sample-dir /weka/oe-training-default/georges/samples/biased-cfg2/add-latent-bias/repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05/cfg-1p85-guidance-0p65-nfe-200-lambda0p15 \
+#     --bias-path /weka/prior-default/georges/research/REPA/biases/imnet256_latent_bias.pt \
+#     --bias-weight 0.05 \
+#     --is-baseline
 
 gantry run \
     --budget ai2/prior \
     --name "SiTXL2-BL-Is-Bias-The-Answer-FID50K-Eval-Subtract-Latent-Bias-Ours-CFG-NFE-200-Lambda0p05" \
-    --priority high \
+    --priority low \
     --gpus 8 \
     --weka "prior-default:/weka/prior-default" \
     --weka "oe-training-default:/weka/oe-training-default" \
@@ -706,7 +706,6 @@ gantry run \
     --cluster ai2/titan-cirrascale \
     --cluster ai2/rhea-cirrascale \
     --retries 3 \
-    --not-preemptible \
     -- torchrun \
     --nnodes=1 \
     --nproc_per_node=8 \
@@ -728,3 +727,4 @@ gantry run \
     --bias-weight 0.05 \
     --is-baseline \
     --subtract-bias
+    
