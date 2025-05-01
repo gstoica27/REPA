@@ -602,6 +602,7 @@ gantry run \
     --conda environment.yml \
     --workspace ai2/structured_diffusion \
     --cluster ai2/saturn-cirrascale \
+    --cluster ai2/jupiter-cirrascale-2 \
     --retries 3 \
     --not-preemptible \
     -- torchrun \
@@ -634,6 +635,7 @@ gantry run \
     --conda environment.yml \
     --workspace ai2/structured_diffusion \
     --cluster ai2/saturn-cirrascale \
+    --cluster ai2/jupiter-cirrascale-2 \
     --retries 3 \
     --not-preemptible \
     -- torchrun \
