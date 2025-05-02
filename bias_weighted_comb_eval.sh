@@ -1,6 +1,8 @@
 # !/bin/bash
 bias_lambda=$1
 velocity_lambda=$2
+workspace="ai2/georges-explorations"
+# workspace="ai2/structured_diffusion"
 
  gantry run \
     --budget ai2/prior \
@@ -10,7 +12,7 @@ velocity_lambda=$2
     --weka "prior-default:/weka/prior-default" \
     --weka "oe-training-default:/weka/oe-training-default" \
     --conda environment.yml \
-    --workspace ai2/structured_diffusion \
+    --workspace $workspace \
     --cluster ai2/saturn-cirrascale \
     --cluster ai2/jupiter-cirrascale-2 \
     --retries 3 \
@@ -45,7 +47,7 @@ gantry run \
     --weka "prior-default:/weka/prior-default" \
     --weka "oe-training-default:/weka/oe-training-default" \
     --conda environment.yml \
-    --workspace ai2/structured_diffusion \
+    --workspace $workspace \
     --cluster ai2/saturn-cirrascale \
     --cluster ai2/jupiter-cirrascale-2 \
     --retries 3 \
