@@ -2,12 +2,14 @@
 bias_lambda=$1
 velocity_lambda=$2
 workspace="ai2/georges-explorations"
+priority="normal"
 # workspace="ai2/structured_diffusion"
+# priority="high"
 
  gantry run \
     --budget ai2/prior \
     --name "SiTXL2-Ours-Is-Bias-The-Answer-FID50K-Eval-Subtract-Latent-Bias-CFG-NFE-200-BiasLambda$bias_lambda-VelLambda$velocity_lambda" \
-    --priority high \
+    --priority $priority \
     --gpus 8 \
     --weka "prior-default:/weka/prior-default" \
     --weka "oe-training-default:/weka/oe-training-default" \
@@ -42,7 +44,7 @@ workspace="ai2/georges-explorations"
 gantry run \
     --budget ai2/prior \
     --name "SiTXL2-Ours-Is-Bias-The-Answer-FID50K-Eval-Add-Latent-Bias-CFG-NFE-200-BiasLambda$bias_lambda-VelLambda$velocity_lambda" \
-    --priority high \
+    --priority $priority \
     --gpus 8 \
     --weka "prior-default:/weka/prior-default" \
     --weka "oe-training-default:/weka/oe-training-default" \
