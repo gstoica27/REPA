@@ -11,6 +11,7 @@ evaluation metrics via the ADM repo: https://github.com/openai/guided-diffusion/
 
 For a simple single-GPU/CPU sampling script, see sample.py.
 """
+import pdb
 import torch
 import torch.distributed as dist
 from models.sit import SiT_models
@@ -89,22 +90,54 @@ def main(args):
     assert args.cfg_scale >= 1.0, "In almost all cases, cfg_scale be >= 1.0"
     using_cfg = args.cfg_scale > 1.0
 
-    # Create folder to save samples:
-    model_string_name = args.model.replace("/", "-")
-    ckpt_string_name = os.path.basename(args.ckpt).replace(".pt", "") if args.ckpt else "pretrained"
-    folder_name = f"{model_string_name}-{ckpt_string_name}-size-{args.resolution}-vae-{args.vae}-" \
-                  f"cfg-{args.cfg_scale}-seed-{args.global_seed}-{args.mode}"
-    sample_folder_dir = f"{args.sample_dir}/{folder_name}"
-    if rank == 0:
-        os.makedirs(sample_folder_dir, exist_ok=True)
-        print(f"Saving .png samples at {sample_folder_dir}")
-    dist.barrier()
-
     if args.bias_path is not None:
         # Load bias
         bias = torch.load(args.bias_path, map_location=f'cuda:{device}').to(torch.float32)[None]
     else:
         bias = None
+
+    sample_dir = args.sample_dir
+    # create bias method folder
+    # pdb.set_trace()
+    if args.bias_path is not None:
+        bias_type = '-'.join(args.bias_path.split("/")[-1].split(".")[0].split('_')[1:])
+        bias_application = "add" if not args.subtract_bias else "subtract"
+        folder_name = f"{bias_application}-{bias_type}"
+        sample_dir = os.path.join(sample_dir, folder_name)
+    
+    model_name = ckpt_path.split("/")[-3]
+    sample_dir = os.path.join(sample_dir, model_name)
+
+    # create bias-cfg folder
+    if args.bias_path is not None:
+        float_to_str = lambda x: str(x).replace(".", "p")
+        cfg_str = float_to_str(args.cfg_scale)
+        guidance_high_str = float_to_str(args.guidance_high)
+        nfe_str = str(args.num_steps)
+        bias_lambda_str = float_to_str(args.bias_weight)
+        velocity_lambda_str = float_to_str(args.velocity_weight) if args.velocity_weight is not None else float_to_str(1 - args.bias_weight)
+
+        folder_name = ""
+        if args.debias_method is not None:
+            folder_name += "method-{}-".format(args.debias_method)
+        folder_name += "cfg-{}-guidance-{}-nfe-{}-bias-lambda-{}-velocity-lambda-{}".format(
+            cfg_str, guidance_high_str, nfe_str, bias_lambda_str, velocity_lambda_str
+        )
+        sample_dir = os.path.join(sample_dir, folder_name)
+
+    # pdb.set_trace()
+    # Create folder to save samples:
+    model_string_name = args.model.replace("/", "-")
+    ckpt_string_name = os.path.basename(args.ckpt).replace(".pt", "") if args.ckpt else "pretrained"
+    folder_name = f"{model_string_name}-{ckpt_string_name}-size-{args.resolution}-vae-{args.vae}-" \
+                  f"cfg-{args.cfg_scale}-seed-{args.global_seed}-{args.mode}"
+    # sample_folder_dir = f"{args.sample_dir}/{folder_name}"
+    sample_folder_dir = os.path.join(sample_dir, folder_name)
+
+    if rank == 0:
+        os.makedirs(sample_folder_dir, exist_ok=True)
+        print(f"Saving .png samples at {sample_folder_dir}")
+    dist.barrier()
 
     # Figure out how many samples we need to generate on each GPU and how many iterations we need to run:
     n = args.per_proc_batch_size
@@ -122,6 +155,26 @@ def main(args):
     pbar = range(iterations)
     pbar = tqdm(pbar) if rank == 0 else pbar
     total = 0
+    print("Running Experiment with the following parameters:")
+    print(f"  - model: {args.model}")
+    print(f"  - ckpt: {args.ckpt}")
+    print(f"  - sample_dir: {args.sample_dir}")
+    print(f"  - num_classes: {args.num_classes}")
+    print(f"  - per_proc_batch_size: {args.per_proc_batch_size}")
+    print(f"  - num_fid_samples: {args.num_fid_samples}")
+    print(f"  - mode: {args.mode}")
+    print(f"  - cfg_scale: {args.cfg_scale}")
+    print(f"  - guidance_low: {args.guidance_low}")
+    print(f"  - guidance_high: {args.guidance_high}")
+    print(f"  - path_type: {args.path_type}")
+    print(f"  - num_steps: {args.num_steps}")
+    print(f"  - heun: {args.heun}")
+    print(f"  - subtract_bias: {args.subtract_bias}")
+    print(f"  - bias_path: {args.bias_path}")
+    print(f"  - bias_lambda: {args.bias_weight}")
+    print(f"  - velocity_lambda: {args.velocity_weight}")
+    print(f"  - is_baseline: {args.is_baseline}")
+    print(f"  - debias_method: {args.debias_method}")
     for _ in pbar:
         # Sample inputs:
         z = torch.randn(n, model.in_channels, latent_size, latent_size, device=device)
@@ -139,9 +192,11 @@ def main(args):
             guidance_high=args.guidance_high,
             path_type=args.path_type,
             bias=bias,
-            bias_interp_weight=args.bias_weight,
+            bias_lambda=args.bias_weight,
             subtract_bias=args.subtract_bias,
-            is_baseline=args.is_baseline
+            is_baseline=args.is_baseline,
+            velocity_lambda=args.velocity_weight,
+            debias_method=args.debias_method,
         )
         with torch.no_grad():
             if args.mode == "sde":
@@ -220,9 +275,11 @@ if __name__ == "__main__":
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False) # only for ode
     # Add bias to model
     parser.add_argument('--bias-path', type=str, default=None)
-    parser.add_argument('--bias-weight', type=float, default=0.05)
+    parser.add_argument('--bias-weight', type=float, default=None)
+    parser.add_argument('--velocity-weight', type=float, default=None)
     parser.add_argument('--subtract-bias', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--is-baseline', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--debias-method', type=str, default=None)
 
 
     args = parser.parse_args()
