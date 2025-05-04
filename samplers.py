@@ -108,6 +108,19 @@ def debias_via_orthogonal_projection(
     return new_velocity
 
 
+def orthogonalize_unconditional(velocity):
+    # pdb.set_trace()
+    velocity_cond, velocity_uncond = velocity.chunk(2)
+    unconditional_projection = (
+        (
+            (velocity_cond * velocity_uncond).sum((1,2,3), keepdim=True) / (velocity_cond * velocity_cond).sum((1,2,3), keepdim=True)
+        ) * velocity_cond
+    )
+    velocity_orth_uncond = (velocity_uncond - unconditional_projection)
+    new_velocity = torch.cat([velocity_cond, velocity_orth_uncond], dim=0)
+    return new_velocity
+
+
 def debias_velocity(velocity, bias, bias_lambda, method=None, velocity_lambda=None, subtract_bias=False, is_baseline=False):
     # pdb.set_trace()
     if method is None:
@@ -129,10 +142,11 @@ def debias_velocity(velocity, bias, bias_lambda, method=None, velocity_lambda=No
             velocity_lambda=velocity_lambda, subtract_bias=subtract_bias,
             is_baseline=is_baseline
         )
+    elif method == 'orthogonal_unconditional':
+        new_velocity = orthogonalize_unconditional(velocity)
     else:
         raise NotImplementedError("Debiasing method not implemented")
     return new_velocity
-    
 
 
 def euler_sampler(
@@ -296,7 +310,7 @@ def euler_maruyama_sampler(
                 model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
                 )[0].to(torch.float64)
 
-            if bias is not None:
+            # if bias is not None:
                 # if not is_baseline:
                 #     if subtract_bias:
                 #         v_cur = (1 - bias_lambda) * v_cur - bias_lambda * bias
@@ -307,11 +321,11 @@ def euler_maruyama_sampler(
                 #         v_cur = (v_cur + bias_lambda * bias) / (1 - bias_lambda)
                 #     else:
                 #         v_cur = (v_cur - bias_lambda * bias) / (1 - bias_lambda)
-                v_cur = debias_velocity(
-                    velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
-                    subtract_bias=subtract_bias, is_baseline=is_baseline, 
-                    velocity_lambda=velocity_lambda, method=debias_method
-                )
+            v_cur = debias_velocity(
+                velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
+                subtract_bias=subtract_bias, is_baseline=is_baseline, 
+                velocity_lambda=velocity_lambda, method=debias_method
+            )
             
             s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)
             d_cur = v_cur - 0.5 * diffusion * s_cur
@@ -366,7 +380,7 @@ def euler_maruyama_sampler(
         model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
         )[0].to(torch.float64)
     
-    if bias is not None:
+    # if bias is not None:
         # if not is_baseline:
         #     if subtract_bias:
         #         v_cur = (1 - bias_lambda) * v_cur - bias_lambda * bias
@@ -377,11 +391,11 @@ def euler_maruyama_sampler(
         #         v_cur = (v_cur + bias_lambda * bias) / (1 - bias_lambda)
         #     else:
         #         v_cur = (v_cur - bias_lambda * bias) / (1 - bias_lambda)
-        v_cur = debias_velocity(
-            velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
-            subtract_bias=subtract_bias, is_baseline=is_baseline, 
-            velocity_lambda=velocity_lambda, method=debias_method
-        )
+    v_cur = debias_velocity(
+        velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
+        subtract_bias=subtract_bias, is_baseline=is_baseline, 
+        velocity_lambda=velocity_lambda, method=debias_method
+    )
 
     s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)
     diffusion = compute_diffusion(t_cur)
