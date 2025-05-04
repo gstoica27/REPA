@@ -108,23 +108,21 @@ def main(args):
     model_name = ckpt_path.split("/")[-3]
     sample_dir = os.path.join(sample_dir, model_name)
 
-    # create bias-cfg folder
+    # create cfg folder
+    float_to_str = lambda x: str(x).replace(".", "p")
+    cfg_str = float_to_str(args.cfg_scale)
+    guidance_high_str = float_to_str(args.guidance_high)
+    nfe_str = str(args.num_steps)
+    folder_name = "cfg-{}-guidance-{}-nfe-{}".format(cfg_str, guidance_high_str, nfe_str)
+    if args.debias_method is not None:
+        folder_name = "method-{}-".format(args.debias_method) + folder_name
+    # add bias information
     if args.bias_path is not None:
-        float_to_str = lambda x: str(x).replace(".", "p")
-        cfg_str = float_to_str(args.cfg_scale)
-        guidance_high_str = float_to_str(args.guidance_high)
-        nfe_str = str(args.num_steps)
         bias_lambda_str = float_to_str(args.bias_weight)
         velocity_lambda_str = float_to_str(args.velocity_weight) if args.velocity_weight is not None else float_to_str(1 - args.bias_weight)
-
-        folder_name = ""
-        if args.debias_method is not None:
-            folder_name += "method-{}-".format(args.debias_method)
-        folder_name += "cfg-{}-guidance-{}-nfe-{}-bias-lambda-{}-velocity-lambda-{}".format(
-            cfg_str, guidance_high_str, nfe_str, bias_lambda_str, velocity_lambda_str
-        )
-        sample_dir = os.path.join(sample_dir, folder_name)
-
+        folder_name += "-bias-lambda-{}-velocity-lambda-{}".format(bias_lambda_str, velocity_lambda_str)
+    
+    sample_dir = os.path.join(sample_dir, folder_name)
     # pdb.set_trace()
     # Create folder to save samples:
     model_string_name = args.model.replace("/", "-")
