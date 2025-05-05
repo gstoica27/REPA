@@ -117,10 +117,14 @@ def main(args):
     if args.debias_method is not None:
         folder_name = "method-{}-".format(args.debias_method) + folder_name
     # add bias information
-    if args.bias_path is not None:
-        bias_lambda_str = float_to_str(args.bias_weight)
-        velocity_lambda_str = float_to_str(args.velocity_weight) if args.velocity_weight is not None else float_to_str(1 - args.bias_weight)
-        folder_name += "-bias-lambda-{}-velocity-lambda-{}".format(bias_lambda_str, velocity_lambda_str)
+    if args.bias_weight is not None:
+        folder_name += "-bias-weight-{}".format(float_to_str(args.bias_weight))
+    if args.velocity_weight is not None:
+        folder_name += "-velocity-weight-{}".format(float_to_str(args.velocity_weight))
+    # if args.bias_path is not None:
+    #     bias_lambda_str = float_to_str(args.bias_weight)
+    #     velocity_lambda_str = float_to_str(args.velocity_weight) if args.velocity_weight is not None else float_to_str(1 - args.bias_weight)
+    #     folder_name += "-bias-lambda-{}-velocity-lambda-{}".format(bias_lambda_str, velocity_lambda_str)
     
     sample_dir = os.path.join(sample_dir, folder_name)
     # pdb.set_trace()
