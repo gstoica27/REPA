@@ -144,7 +144,10 @@ def debias_velocity(velocity, bias, bias_lambda, method=None, velocity_lambda=No
             is_baseline=is_baseline
         )
     elif method == 'orthogonal_unconditional':
-        new_velocity = orthogonalize_unconditional(velocity, velocity_lambda)
+        new_velocity = orthogonalize_unconditional(
+            velocity=velocity, bias_lambda=bias_lambda, 
+            velocity_lambda=velocity_lambda
+        )
     else:
         raise NotImplementedError("Debiasing method not implemented")
     return new_velocity
