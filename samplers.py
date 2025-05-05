@@ -108,7 +108,7 @@ def debias_via_orthogonal_projection(
     return new_velocity
 
 
-def orthogonalize_unconditional(velocity, velocity_lambda=0.95):
+def orthogonalize_unconditional(velocity, bias_lambda=0.05, velocity_lambda=0.95):
     # pdb.set_trace()
     velocity_cond, velocity_uncond = velocity.chunk(2)
     unconditional_projection = (
@@ -117,7 +117,7 @@ def orthogonalize_unconditional(velocity, velocity_lambda=0.95):
         ) * velocity_cond
     )
     velocity_orth_uncond = (velocity_uncond - unconditional_projection)
-    velocity_uncond = velocity_orth_uncond + velocity_lambda * unconditional_projection
+    velocity_uncond = velocity_lambda * velocity_orth_uncond + bias_lambda * unconditional_projection
     new_velocity = torch.cat([velocity_cond, velocity_uncond], dim=0)
     return new_velocity
 
