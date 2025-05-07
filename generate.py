@@ -42,6 +42,23 @@ def create_npz_from_sample_folder(sample_dir, num=50_000):
     return npz_path
 
 
+def create_npz_from_sample_folder_unknown_ids(sample_dir):
+    """
+    Builds a single .npz file from a folder of .png samples.
+    """
+    samples = []
+    for i in tqdm(os.listdir(sample_dir), desc="Building .npz file from samples"):
+        sample_pil = Image.open(f"{sample_dir}/{i}")
+        sample_np = np.asarray(sample_pil).astype(np.uint8)
+        samples.append(sample_np)
+    samples = np.stack(samples)
+    assert samples.shape == (len(samples), samples.shape[1], samples.shape[2], 3)
+    npz_path = f"{sample_dir}.npz"
+    np.savez(npz_path, arr_0=samples)
+    print(f"Saved .npz file to {npz_path} [shape={samples.shape}].")
+    return npz_path
+
+
 def main(args):
     """
     Run sampling.
@@ -135,6 +152,7 @@ def main(args):
                   f"cfg-{args.cfg_scale}-seed-{args.global_seed}-{args.mode}"
     # sample_folder_dir = f"{args.sample_dir}/{folder_name}"
     sample_folder_dir = os.path.join(sample_dir, folder_name)
+    sample_folder_classes_dir = os.path.join(sample_folder_dir, "by_class")
 
     if rank == 0:
         os.makedirs(sample_folder_dir, exist_ok=True)
@@ -225,12 +243,25 @@ def main(args):
             for i, sample in enumerate(samples):
                 index = i * dist.get_world_size() + rank + total
                 Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
+            # Save samples by class
+            for i, (sample, sample_label) in enumerate(zip(samples, y)):
+                index = i * dist.get_world_size() + rank + total
+                class_dir = os.path.join(sample_folder_classes_dir, f"class_{str(sample_label.item())}")
+                os.makedirs(class_dir, exist_ok=True)
+                Image.fromarray(sample).save(f"{class_dir}/{index:06d}.png")            
+
         total += global_batch_size
 
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
     dist.barrier()
     if rank == 0:
         create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
+
+        for class_dir in os.listdir(sample_folder_classes_dir):
+            class_dir_path = os.path.join(sample_folder_classes_dir, class_dir)
+            if os.path.isdir(class_dir_path):
+                create_npz_from_sample_folder_unknown_ids(class_dir_path, args.num_fid_samples)
+
         print("Done.")
     dist.barrier()
     dist.destroy_process_group()
