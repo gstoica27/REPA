@@ -159,7 +159,7 @@ def main(args):
                   f"cfg-{args.cfg_scale}-seed-{args.global_seed}-{args.mode}"
     # sample_folder_dir = f"{args.sample_dir}/{folder_name}"
     sample_folder_dir = os.path.join(sample_dir, folder_name)
-    sample_folder_classes_dir = os.path.join(sample_folder_dir, "by_class")
+    sample_folder_classes_dir = os.path.join(sample_folder_dir, "samples_per_class")
     if rank == 0:
         os.makedirs(sample_folder_dir, exist_ok=True)
         os.makedirs(sample_folder_classes_dir, exist_ok=True)
@@ -266,11 +266,7 @@ def main(args):
     dist.barrier()
     if rank == 0:
         create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
-
-        for class_dir in os.listdir(sample_folder_classes_dir):
-            class_dir_path = os.path.join(sample_folder_classes_dir, class_dir)
-            if os.path.isdir(class_dir_path):
-                create_npz_from_sample_folder_with_classes(class_dir_path, args.num_fid_samples)
+        create_npz_from_sample_folder_with_classes(sample_folder_classes_dir)
 
         print("Done.")
     dist.barrier()
