@@ -37,6 +37,12 @@ logger = get_logger(__name__)
 with open('/weka/prior-default/georges/keys/wandb.txt', 'r') as f:
     wandb_key = f.readlines()[0].strip()
 wandb.login(key=wandb_key) # login to wandb
+if not os.path.exists('/root/.cache/torch/hub/facebookresearch_dinov2_main'):
+    from distutils.dir_util import copy_tree
+    copy_tree(
+        '/weka/prior-default/georges/redundancies/facebookresearch_dinov2_main', 
+        '/root/.cache/torch/hub/facebookresearch_dinov2_main'
+    )
 
 CLIP_DEFAULT_MEAN = (0.48145466, 0.4578275, 0.40821073)
 CLIP_DEFAULT_STD = (0.26862954, 0.26130258, 0.27577711)
@@ -540,5 +546,19 @@ def parse_args(input_args=None):
 
 if __name__ == "__main__":
     args = parse_args()
+
+    import torch.distributed as dist
+    
+    if dist.is_initialized():
+        if dist.get_rank() == 0:
+            while True:
+                try:
+                    torch.hub.load('facebookresearch/dinov2', f'dinov2_vitb14')
+                except Exception as e:
+                    print(e)
+                    continue
+                break
+        dist.barrier()
+
     exp_name = create_experiment_name(args)
     main(args, exp_name)
