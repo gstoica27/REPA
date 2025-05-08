@@ -246,7 +246,7 @@ def main(args, exp_name):
             weighting=args.weighting,
         )
     elif 'triplet' in args.denoising_type:
-        from triplet_loss import TripletSILoss
+        from triplet_loss_t2i import TripletSILoss
         loss_fn = TripletSILoss(
             prediction=args.prediction,
             path_type=args.path_type, 

@@ -309,6 +309,7 @@ class TripletSILoss:
             
         model_input = alpha_t * images + sigma_t * noises
         model_output, zs_tilde, labels = model(model_input, time_input.flatten(), **model_kwargs)
+        # model_output, zs_tilde = model(model_input, time_input.flatten(), **model_kwargs)
         # pdb.set_trace()
         denoising_loss = self.denoising_fn(
             pred=model_output, 
