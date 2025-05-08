@@ -46,10 +46,14 @@ def create_npz_from_sample_folder_with_classes(sample_dir):
     """
     Builds a single .npz file from a folder of .png samples.
     """
+    # pdb.set_trace()
     samples_by_class = {}
     save_dir = os.path.join(sample_dir, "class_npzs")
     os.makedirs(save_dir, exist_ok=True)
     for fname in tqdm(os.listdir(sample_dir), desc="Building .npz file from samples"):
+        if os.path.isdir(os.path.join(sample_dir, fname)):
+            continue
+        
         class_idx = fname.split("_")[0]
         sample_pil = Image.open(f"{sample_dir}/{fname}")
         sample_np = np.asarray(sample_pil).astype(np.uint8)
@@ -57,12 +61,13 @@ def create_npz_from_sample_folder_with_classes(sample_dir):
             samples_by_class[class_idx] = []
         samples_by_class[class_idx].append(sample_np)
         # samples.append(sample_np)
+    # pdb.set_trace()
     for class_idx, samples in samples_by_class.items():
         samples = np.stack(samples)
         assert samples.shape == (len(samples), samples.shape[1], samples.shape[2], 3)
         npz_path = f"{save_dir}/{class_idx}.npz"
         np.savez(npz_path, arr_0=samples)
-        print(f"Saved .npz file to {npz_path} [shape={samples.shape}].")
+    print(f"Saved {len(os.listdir(save_dir))} npz files to {npz_path} [shape={samples.shape}].")
     return npz_path
 
 
