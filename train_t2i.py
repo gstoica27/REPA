@@ -445,7 +445,7 @@ def main(args, exp_name):
                 "grad_norm": accelerator.gather(grad_norm).mean().detach().item(),
             }
             if 'contrastive_loss' in loss_dict:
-                logs["flow_loss"] = accelerator.gather(loss_dict["flow_loss"]).mean().detach().item(),
+                logs["flow_loss"] = accelerator.gather(loss_dict["flow_loss"]).mean().detach().item()
                 logs["contrastive_loss"] = accelerator.gather(loss_dict["contrastive_loss"]).mean().detach().item()
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)

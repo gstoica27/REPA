@@ -134,12 +134,12 @@ class TripletSILoss:
         if denoising_type == 'triplet_any_noise':
             print('Using triplet any noise loss')
             self.denoising_fn = self.triplet_any_noise
-        elif denoising_type == 'triplet_same_noise':
-            print('Using triplet same noise loss')
-            self.denoising_fn = self.triplet_same_noise
-        elif denoising_type == 'triplet_target_conditioned':
-            print('Using triplet target conditioned loss')
-            self.denoising_fn = self.compute_target_conditioned_triplet_loss
+        # elif denoising_type == 'triplet_same_noise':
+        #     print('Using triplet same noise loss')
+        #     self.denoising_fn = self.triplet_same_noise
+        # elif denoising_type == 'triplet_target_conditioned':
+        #     print('Using triplet target conditioned loss')
+        #     self.denoising_fn = self.compute_target_conditioned_triplet_loss
         
         if self.is_class_conditioned:
             print("Using class-conditioned triplet loss")
@@ -273,10 +273,10 @@ class TripletSILoss:
         
     def triplet_any_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, **kwargs):
         model_target = d_alpha_t * target_images + d_sigma_t * noises
-        if self.is_class_conditioned:
-            loss = self.compute_class_conditioned_triplet_loss(pred, model_target)
-        else:
-            loss = self.compute_triplet_loss_efficiently(pred, model_target)
+        # if self.is_class_conditioned:
+        #     loss = self.compute_class_conditioned_triplet_loss(pred, model_target)
+        # else:
+        loss = self.compute_triplet_loss_efficiently(pred, model_target)
         return loss
     
     # def triplet_same_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None):
