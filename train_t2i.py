@@ -257,7 +257,7 @@ def main(args, exp_name):
             weighting=args.weighting,
             denoising_type=args.denoising_type,
             denoising_weight=args.denoising_temp,
-            null_class_idx=args.num_classes,
+            # null_class_idx=args.num_classes,
             dont_contrast_on_unconditional=args.dont_contrast_on_unconditional,
             is_class_conditioned=args.is_class_conditioned
         )
@@ -529,6 +529,7 @@ def parse_args(input_args=None):
                         help="If True, apply contrastive loss on unconditional samples.")
     parser.add_argument("--is-class-conditioned", action=argparse.BooleanOptionalAction, default=False, 
                         help="If True, apply class conditioning for triplet loss (only for triplet loss). ")
+    parser.add_argument("--num-classes", type=int, default=None, help="Number of classes for class conditioning.")
 
     if input_args is not None:
         args = parser.parse_args(input_args)
