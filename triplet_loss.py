@@ -128,7 +128,7 @@ class TripletSILoss:
         self.dont_contrast_on_unconditional = dont_contrast_on_unconditional
         self.is_class_conditioned = is_class_conditioned
         self.weigh_on_time = weigh_on_time
-        if not self.dont_contrast_on_unconditional:
+        if self.dont_contrast_on_unconditional:
             assert self.null_class_idx is not None, "Null class index must be provided"
         
         if denoising_type == 'triplet_any_noise':
