@@ -140,6 +140,9 @@ class TripletSILoss:
         elif denoising_type == 'triplet_target_conditioned':
             print('Using triplet target conditioned loss')
             self.denoising_fn = self.compute_target_conditioned_triplet_loss
+        elif denoising_type == 'triplet_xt':
+            print('Using xt triplet loss')
+            self.denoising_fn = self.triplet_xt
         
         if self.is_class_conditioned:
             print("Using class-conditioned triplet loss")
@@ -286,6 +289,54 @@ class TripletSILoss:
         reconstructed_target = (pred - d_sigma_t * noises) / d_alpha_t
         loss = self.compute_triplet_loss(reconstructed_target, target_images, labels)
         return loss
+    
+    def xt_contrastive_loss(self, pred_traj, ref_traj, state, real_images, d_alpha_t, labels=None):
+        # pdb.set_trace()
+        pred_traj = pred_traj.flatten(1)
+        ref_traj = ref_traj.flatten(1)
+        # Sample the negatives
+        bsz = pred_traj.shape[0]
+        choices = torch.tile(torch.arange(bsz), (bsz, 1)).to(pred_traj.device)
+        choices.fill_diagonal_(-1.)
+        choices = choices.sort(dim=1)[0][:, 1:]
+        choices = choices[torch.arange(bsz), torch.randint(0, bsz-1, (bsz,))]
+        sampled_images = real_images[choices]
+        # Compute the conditioned trajectory
+        partial_neg_traj = (state + d_alpha_t * sampled_images).flatten(1)
+        # Rescale the trajectory
+        neg_traj = ref_traj.norm(dim=-1, keepdim=True) * partial_neg_traj / partial_neg_traj.norm(dim=-1, keepdim=True)
+        # Compute the loss
+        loss = mean_flat((pred_traj - neg_traj) ** 2)
+        return loss
+    
+    def xt_cc_contrastive_loss(self, pred_traj, ref_traj, state, real_images, d_alpha_t, labels=None):
+        return torch.inf
+
+    def triplet_xt(self, pred, target_images, d_alpha_t, d_sigma_t, noises, noised_images, labels=None, **kwargs):
+        # Compute the reference trajectory
+        model_target = d_alpha_t * target_images + d_sigma_t * noises
+        # Compute the reference loss
+        positive_loss = mean_flat((pred - model_target) ** 2)
+        # Compute the contrastive trajectory
+        if self.is_class_conditioned:
+            negative_loss = self.xt_cc_contrastive_loss(
+                pred_traj=pred, ref_traj=model_target, 
+                state=noised_images, real_images=target_images, 
+                labels=labels, d_alpha_t=d_alpha_t
+            )
+        else:
+            negative_loss = self.xt_contrastive_loss(
+                pred_traj=pred, ref_traj=model_target, 
+                state=noised_images, real_images=target_images, 
+                labels=labels, d_alpha_t=d_alpha_t
+            )
+        loss = (1+self.temperature) * positive_loss - self.temperature * negative_loss
+        return {
+            "loss": loss,
+            "flow_loss": positive_loss,
+            "contrastive_loss": negative_loss
+        }
+
 
     def __call__(self, model, images, model_kwargs=None, zs=None):
         if model_kwargs == None:

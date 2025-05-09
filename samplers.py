@@ -167,8 +167,6 @@ def euler_sampler(
         record_intermediate_steps_freq=None,
         record_trajectory_structure=False,
         trajectory_structure_type=None,
-        bias=None,
-        bias_weight=0.0
         ):
     # setup conditioning
     if cfg_scale > 1.0:
@@ -202,8 +200,8 @@ def euler_sampler(
                 model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
                 )[0].to(torch.float64)
             
-            if bias is not None:
-                d_cur = (1 - bias_weight) * d_cur + bias_weight * bias
+            # if bias is not None:
+            #     d_cur = (1 - bias_weight) * d_cur + bias_weight * bias
 
             if cfg_scale > 1. and t_cur <= guidance_high and t_cur >= guidance_low:
                 d_cur_cond, d_cur_uncond = d_cur.chunk(2)

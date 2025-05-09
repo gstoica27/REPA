@@ -132,27 +132,6 @@ def create_experiment_name(args):
     """
     exp_name = ""
     offset = ""
-    # Add structure to name
-    # if args.struct_coeff > 0:
-    #     assert args.struct_method is not None
-    #     if args.struct_method == 'between_images':
-    #         struct_name = 'structImg'
-    #     elif args.struct_method == 'between_tokens':
-    #         struct_name = 'structTok'
-    #     elif args.struct_method == 'between_images_per_token':
-    #         struct_name = 'structImgByTok'
-    #     else:
-    #         raise NotImplementedError()
-        
-    #     if not args.struct_add_relu:
-    #         struct_name += "-noRelu"
-        
-    #     coeff_str = str(args.struct_coeff).replace('.', 'p')    
-    #     struct_name += f"-{coeff_str}"
-    #     struct_name += f"-enc{args.struct_encoder_depth}"
-        
-    #     exp_name += struct_name
-    #     offset = "-"
     # Add REPA to name
     if args.proj_coeff > 0:
         path_name = str(args.path_type).capitalize()
@@ -183,6 +162,8 @@ def create_experiment_name(args):
         denoising_name = 'tripsame'
     elif args.denoising_type == 'triplet_target_conditioned':
         denoising_name = 'triptarget'
+    elif args.denoising_type == 'triplet_xt':
+        denoising_name = 'tripxt'
     else:
         raise NotImplementedError()
     
