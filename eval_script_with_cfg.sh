@@ -1,7 +1,8 @@
 #!/bin/bash
 # MODEL_NAME="SiT-B/2"
 MODEL_NAME="SiT-XL/2"
-MODEL_ITERS="sitxl2-vanilla-bs256-tripanyTemp0p05"
+# MODEL_ITERS="sitxl2-vanilla-bs256-tripanyTemp0p05"
+MODEL_ITERS="sitxl2-vanilla-bs256-meanTemp0p0-res256"
 # MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripanyTemp0p05-res256"
 # MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-cctripanyTemp0p05-res256"
 # CHECKPOINT_ITERS="0050000.pt 0100000.pt 0150000.pt 0200000.pt 0250000.pt 0300000.pt 0350000.pt 0400000.pt"
@@ -19,7 +20,8 @@ done
 
 for exp_name in $MODEL_ITERS
 do
-    EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/${exp_name}"
+    # EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/${exp_name}"
+    EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/exps2/${exp_name}"
     SAVE_DIR="/weka/oe-training-default/georges/samples/vanilla/fid_50k/"$3"_steps/with_cfg/with_cfg_"$1"_"$2"/${exp_name}"
     for fname in $CHECKPOINT_ITERS
         do
