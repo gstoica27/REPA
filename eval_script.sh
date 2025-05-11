@@ -16,7 +16,7 @@ SAVE_DIR="/weka/oe-training-default/georges/samples/by_class/fid_50k"
 # EXP_LOC="/weka/oe_training_default/georges/checkpoints/REPA/exps/exps2_7M"
 # EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/masked_unconditionals/hyperparam_search"
 # EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/"
-EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/xt_conditioned
+EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/xt_conditioned"
 
 for exp_name in $MODEL_ITERS
 do 
