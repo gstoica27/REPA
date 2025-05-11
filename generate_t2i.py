@@ -11,6 +11,7 @@ evaluation metrics via the ADM repo: https://github.com/openai/guided-diffusion/
 
 For a simple single-GPU/CPU sampling script, see sample.py.
 """
+import pdb
 import torch
 import torch.distributed as dist
 from models.mmdit import MMDiT
@@ -21,7 +22,7 @@ from PIL import Image
 import numpy as np
 import math
 import argparse
-from sampler_t2i import euler_sampler, euler_maruyama_sampler
+from samplers_t2i import euler_sampler, euler_maruyama_sampler
 from utils import load_legacy_checkpoints, download_model
 
 from dataset import MSCOCO256Features
@@ -71,7 +72,8 @@ def main(args):
     ).to(device)
 
     # Setup data:
-    all_dataset = MSCOCO256Features(path='../data/coco256_features', mode='val', ret_caption=True)
+    # all_dataset = MSCOCO256Features(path='../data/coco256_features', mode='val', ret_caption=True)
+    all_dataset = MSCOCO256Features(path='/weka/oe-training-default/georges/datasets/mscoco256_featuresv3/', mode='val')
     val_dataset = all_dataset.test
     y_null = torch.from_numpy(all_dataset.empty_context).to(device).unsqueeze(0)
     local_batch_size = args.per_proc_batch_size
@@ -87,7 +89,8 @@ def main(args):
     val_dataloader = accelerator.prepare(val_dataloader)
     # Auto-download a pre-trained model or load a custom SiT checkpoint from train.py:
     ckpt_path = args.ckpt
-    state_dict = torch.load(ckpt_path, map_location="cpu")['model']
+    # pdb.set_trace()
+    state_dict = torch.load(ckpt_path, map_location="cpu", weights_only=False)[args.checkpoint_key]
     model.load_state_dict(state_dict)
     model.eval()  # important!
     vae = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
@@ -113,7 +116,9 @@ def main(args):
     n = args.per_proc_batch_size
     global_batch_size = n * dist.get_world_size()
     # To make things evenly-divisible, we'll sample a bit more than we need and then discard the extra samples:
-    total_samples = 40192
+    # total_samples = 40192
+    # total_samples = args.num_fid_samples
+    total_samples = int(math.ceil(args.num_fid_samples / global_batch_size) * global_batch_size)
     if accelerator.is_main_process:
         print(f"Total number of images that will be sampled: {total_samples}")
         print(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -126,10 +131,11 @@ def main(args):
     pbar = tqdm(pbar) if accelerator.is_main_process else pbar
     total = 0
     clipsim_sum = 0.
-    from utils import ClipSimilarity
-    clipsim_fn = ClipSimilarity(device=device)
+    # from utils import ClipSimilarity
+    # clipsim_fn = ClipSimilarity(device=device)
 
-    for raw_image, _, context, raw_captions in val_dataloader:
+    # for raw_image, _, context, raw_captions in val_dataloader:
+    for raw_image, _, context in val_dataloader:
         # Sample inputs:
         z = torch.randn(n, model.in_channels, latent_size, latent_size, device=device)
 
@@ -171,25 +177,26 @@ def main(args):
                 index = i * accelerator.num_processes + accelerator.local_process_index + total
                 Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
                 # Image.fromarray(real_sample).save(f"{real_sample_folder_dir}/{index:06d}.png")
-            batch_clipsim = clipsim_fn(
-                torch.from_numpy(samples/255.).to(device).permute(0, 3, 1, 2), raw_captions
-                )
+            # batch_clipsim = clipsim_fn(
+            #     torch.from_numpy(samples/255.).to(device).permute(0, 3, 1, 2), raw_captions
+            #     )
         total += global_batch_size
-        gather_clipsim_sum = [
-            torch.zeros_like(batch_clipsim) for _ in range(4)
-            ]
-        torch.distributed.all_gather(gather_clipsim_sum, batch_clipsim)
-        gather_clipsim_sum = torch.cat(gather_clipsim_sum).sum()
-        clipsim_sum += gather_clipsim_sum
-        if accelerator.is_main_process:
-            print(f"{total}: {clipsim_sum / total}")
+        # gather_clipsim_sum = [
+        #     torch.zeros_like(batch_clipsim) for _ in range(4)
+        #     ]
+        # torch.distributed.all_gather(gather_clipsim_sum, batch_clipsim)
+        # gather_clipsim_sum = torch.cat(gather_clipsim_sum).sum()
+        # clipsim_sum += gather_clipsim_sum
+        # if accelerator.is_main_process:
+        #     print(f"{total}: {clipsim_sum / total}")
         if accelerator.is_main_process:
             pbar.update(1)
 
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
     dist.barrier()
     if accelerator.is_main_process:
-        create_npz_from_sample_folder(sample_folder_dir, 40192)
+        # create_npz_from_sample_folder(sample_folder_dir, 40192)
+        create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
         # create_npz_from_sample_folder(real_sample_folder_dir, 40192)
         print("Done.")
     dist.barrier()
@@ -232,6 +239,7 @@ if __name__ == "__main__":
     parser.add_argument("--heun", action=argparse.BooleanOptionalAction, default=False) # only for ode
     parser.add_argument("--guidance-low", type=float, default=0.)
     parser.add_argument("--guidance-high", type=float, default=1.)
+    parser.add_argument("--checkpoint-key", type=str, default="model", choices=['model', 'ema']) # whether to load the model or ema
 
     # will be deprecated
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False) # only for ode
