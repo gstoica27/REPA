@@ -5,7 +5,9 @@ import random
 import glob
 import torch
 from torch.utils.data import Dataset
+from collections import defaultdict
 import numpy as np
+from tqdm import tqdm
 
 from PIL import Image
 import PIL.Image
@@ -79,8 +81,9 @@ def get_feature_dir_info(root):
     files = glob.glob(os.path.join(root, '*.npy'))
     files_caption = glob.glob(os.path.join(root, '*_*.npy'))
     num_data = len(files) - len(files_caption)
-    n_captions = {k: 0 for k in range(num_data)}
-    for f in files_caption:
+    # n_captions = {k: 0 for k in range(num_data)}
+    n_captions = defaultdict(lambda: 0)
+    for f in tqdm(files_caption):
         name = os.path.split(f)[-1]
         k1, k2 = os.path.splitext(name)[0].split('_')
         n_captions[int(k1)] += 1
@@ -180,6 +183,57 @@ class MSCOCO256Features(DatasetFactory):  # the moments calculated by Stable Dif
         else:
             self.train = MSCOCOFeatureDataset(os.path.join(path, 'train'))
             assert len(self.train) == 82783
+            self.empty_context = np.load(os.path.join(path, 'empty_context.npy'))
+
+            if cfg:  # classifier free guidance
+                assert p_uncond is not None
+                print(f'prepare the dataset for classifier free guidance with p_uncond={p_uncond}')
+                self.train = CFGDataset(self.train, p_uncond, self.empty_context)
+
+    @property
+    def data_shape(self):
+        return 4, 32, 32
+
+    @property
+    def fid_stat(self):
+        return f'assets/fid_stats/fid_stats_mscoco256_val.npz'
+
+
+class CC3MFeatureDataset(Dataset):
+    # the image features are got through sample
+    def __init__(self, root, ids_list):
+        self.root = root
+        self.num_data, self.n_captions = get_feature_dir_info(root)
+        self.ids_list = ids_list
+
+    def __len__(self):
+        return self.num_data
+
+    def __getitem__(self, index):
+        uid = f'{int(self.ids_list[index]):09d}'
+        with open(os.path.join(self.root, f'{uid}.png'), 'rb') as f:
+            x = np.array(PIL.Image.open(f))
+            x = x.reshape(*x.shape[:2], -1).transpose(2, 0, 1)
+
+        z = np.load(os.path.join(self.root, f'{uid}.npy'))
+        k = 0#random.randint(0, self.n_captions[uid] - 1)
+        c = np.load(os.path.join(self.root, f'{uid}_{k}.npy'))
+        return x, z, c
+
+
+class CC3MFeatures(DatasetFactory):  # the moments calculated by Stable Diffusion image encoder & the contexts calculated by clip
+    def __init__(self, path, cfg=True, p_uncond=0.1, mode='train'):
+        super().__init__()
+        print('Prepare dataset...')
+        if mode == 'val':
+            self.ids_list = np.loadtxt(os.path.join(path, "val_ids.txt"))
+            self.test = CC3MFeatureDataset(os.path.join(path, 'val'), ids_list=self.ids_list)
+            assert len(self.test) == 13_443
+            self.empty_context = np.load(os.path.join(path, 'empty_context.npy'))
+        else:
+            self.ids_list = np.loadtxt(os.path.join(path, "train_ids.txt"))
+            self.train = CC3MFeatureDataset(os.path.join(path, 'train'), ids_list=self.ids_list)
+            assert len(self.train) == 2_905_954
             self.empty_context = np.load(os.path.join(path, 'empty_context.npy'))
 
             if cfg:  # classifier free guidance
