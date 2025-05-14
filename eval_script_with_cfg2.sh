@@ -195,7 +195,7 @@ gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirr
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name cfg-1.75-0.75-200 -- bash eval_script_with_cfg.sh 1.75 0.75 200
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name cfg-1.75-0.75-250 -- bash eval_script_with_cfg.sh 1.75 0.75 250
 
-gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name SiTXL2-ODE-Ours-Heun-cfg-1.8-0.65-50 -- bash eval_script_with_cfg.sh 1.8 0.65 50
+# gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name SiTXL2-ODE-Ours-Heun-cfg-1.8-0.65-50 -- bash eval_script_with_cfg.sh 1.8 0.65 50
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name cfg-1.8-0.65-100 -- bash eval_script_with_cfg.sh 1.8 0.65 100
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name cfg-1.8-0.65-150 -- bash eval_script_with_cfg.sh 1.8 0.65 150
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name SiTXL2-ODE-cfg-1.8-0.65-200 -- bash eval_script_with_cfg.sh 1.8 0.65 200
@@ -216,7 +216,7 @@ gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirr
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name SiTXL2-ODE-Heun-Ours-cfg-1.85-0.65-50 -- bash eval_script_with_cfg.sh 1.85 0.65 50
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name cfg-1.85-0.65-100 -- bash eval_script_with_cfg.sh 1.85 0.65 100
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name cfg-1.85-0.65-150 -- bash eval_script_with_cfg.sh 1.85 0.65 150
-# gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name SiTXL2-ODE-Heun-BL-cfg-1.85-0.65-200 -- bash eval_script_with_cfg.sh 1.85 0.65 200
+gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name SiTXL2-ODE-Heun-BL-cfg-1.85-0.65-200 -- bash eval_script_with_cfg.sh 1.85 0.65 200
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name cfg-1.85-0.65-250 -- bash eval_script_with_cfg.sh 1.85 0.65 250
 
 # gantry run $args --workspace ai2/structured_diffusion --cluster ai2/jupiter-cirrascale-2 --cluster ai2/saturn-cirrascale --gpus 8 --name SiTXL2-ODE-Heun-Ours-cfg-1.85-0.7-50 -- bash eval_script_with_cfg.sh 1.85 0.7 50
