@@ -25,7 +25,7 @@ import argparse
 from samplers_t2i import euler_sampler, euler_maruyama_sampler
 from utils import load_legacy_checkpoints, download_model
 
-from dataset import MSCOCO256Features
+from dataset import CC3MFeatures
 from torch.utils.data import DataLoader
 
 from accelerate import Accelerator
@@ -99,10 +99,10 @@ def main(args):
 
     # Create folder to save samples:
     if args.prefix == "":
-        folder_name = f"coco-size-{args.resolution}-vae-{args.vae}-" \
+        folder_name = f"cc3m-size-{args.resolution}-vae-{args.vae}-" \
                     f"cfg-{args.cfg_scale}-seed-{args.global_seed}-{args.mode}"
     else:
-        folder_name = f"{args.prefix}-coco-size-{args.resolution}-vae-{args.vae}-" \
+        folder_name = f"{args.prefix}-cc3m-size-{args.resolution}-vae-{args.vae}-" \
                     f"cfg-{args.cfg_scale}-seed-{args.global_seed}-{args.mode}"
     sample_folder_dir = f"{args.sample_dir}/{folder_name}"
     real_sample_folder_dir = f"{args.sample_dir}/{folder_name}_real"
@@ -173,10 +173,11 @@ def main(args):
             samples = torch.clamp(
                 255. * samples, 0, 255
                 ).permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
-            # real_samples = (raw_image).permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
+            real_samples = (raw_image).permute(0, 2, 3, 1).to("cpu", dtype=torch.uint8).numpy()
 
             # Save samples to disk as individual .png files
-            for i, sample in enumerate(samples):
+            for i, (sample, real_sample, caption) in enumerate(zip(samples, real_samples, raw_captions)):
+                caption = caption.strip()
                 index = i * accelerator.num_processes + accelerator.local_process_index + total
                 Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
                 Image.fromarray(real_sample).save(f"{real_sample_folder_dir}/{index:06d}.png")

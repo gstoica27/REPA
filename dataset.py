@@ -208,16 +208,20 @@ class MSCOCO256Features(DatasetFactory):  # the moments calculated by Stable Dif
 
 class CC3MFeatureDataset(Dataset):
     # the image features are got through sample
-    def __init__(self, root, ids_list):
+    def __init__(self, root, ids_list, offset=9):
         self.root = root
         self.num_data, self.n_captions = get_feature_dir_info(root)
         self.ids_list = ids_list
+        self.offset = offset
 
     def __len__(self):
         return self.num_data
 
     def __getitem__(self, index):
-        uid = f'{int(self.ids_list[index]):09d}'
+        if self.offset == 9:
+            uid = f'{int(self.ids_list[index]):09d}'
+        elif self.offset == 8:
+            uid = f'{int(self.ids_list[index]):08d}'
         with open(os.path.join(self.root, f'{uid}.png'), 'rb') as f:
             x = np.array(PIL.Image.open(f))
             x = x.reshape(*x.shape[:2], -1).transpose(2, 0, 1)
@@ -235,7 +239,7 @@ class CC3MFeatures(DatasetFactory):  # the moments calculated by Stable Diffusio
         print('Prepare dataset...')
         if mode == 'val':
             self.ids_list = np.loadtxt(os.path.join(path, "val_ids.txt"))
-            self.test = CC3MFeatureDataset(os.path.join(path, 'val'), ids_list=self.ids_list)
+            self.test = CC3MFeatureDataset(os.path.join(path, 'val'), ids_list=self.ids_list, offset=8)
             assert len(self.test) == 13_443
             self.empty_context = np.load(os.path.join(path, 'empty_context.npy'))
         else:

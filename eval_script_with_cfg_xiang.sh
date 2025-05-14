@@ -25,7 +25,8 @@ do
     EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/${exp_name}"
     # EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/exps2/${exp_name}"
     # SAVE_DIR="/weka/oe-training-default/georges/samples/vanilla/fid_50k/"$3"_steps/with_cfg/with_cfg_"$1"_"$2"/${exp_name}"
-    SAVE_DIR="/weka/oe-training-default/georges/samples/ode_v2/repa/fid_50k/"$3"_steps/with_cfg/with_cfg_"$1"_"$2"/${exp_name}"
+    # SAVE_DIR="/weka/oe-training-default/georges/samples/ode_v2/repa/fid_50k/"$3"_steps/with_cfg/with_cfg_"$1"_"$2"/${exp_name}"
+    SAVE_DIR="/weka/oe-training-default/georges/samples/sde_low_training/repa/fid_50k/"$3"_steps/with_cfg/with_cfg_"$1"_"$2"/${exp_name}"
     for fname in $CHECKPOINT_ITERS
         do
         if [ ! -d "${SAVE_DIR}/${exp_name}" ]; then 
@@ -41,11 +42,10 @@ do
             --encoder-depth=8 \
             --projector-embed-dims=768 \
             --per-proc-batch-size=64 \
-            --mode=ode \
+            --mode=sde \
             --num-steps=$3 \
             --cfg-scale=$1 \
             --guidance-high=$2 \
-            --heun \
             --sample-dir "${SAVE_DIR}"
         fi
     done 
