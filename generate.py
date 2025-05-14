@@ -138,7 +138,7 @@ def main(args):
         sample_dir = os.path.join(sample_dir, model_name)
 
     # create cfg folder
-    if args.debias_method is not None;
+    if args.debias_method is not None:
         float_to_str = lambda x: str(x).replace(".", "p")
         cfg_str = float_to_str(args.cfg_scale)
         guidance_high_str = float_to_str(args.guidance_high)
