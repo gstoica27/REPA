@@ -167,6 +167,7 @@ def euler_sampler(
         record_intermediate_steps_freq=None,
         record_trajectory_structure=False,
         trajectory_structure_type=None,
+        **kwargs
         ):
     # setup conditioning
     if cfg_scale > 1.0:
@@ -218,7 +219,7 @@ def euler_sampler(
                 time_input = torch.ones(model_input.size(0)).to(
                     device=model_input.device, dtype=torch.float64
                     ) * t_next
-                d_prime = model(
+                9 = model(
                     model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
                     )[0].to(torch.float64)
                 if cfg_scale > 1.0 and t_cur <= guidance_high and t_cur >= guidance_low:

@@ -1,4 +1,5 @@
 import argparse
+import pickle
 import copy
 from copy import deepcopy
 import logging
@@ -345,7 +346,14 @@ def main(args, exp_name):
 
     # Labels to condition the model with (feel free to change):
     sample_batch_size = args.batch_size // accelerator.num_processes
-    _, gt_xs, _ = next(iter(train_dataloader))
+    _, gt_xs, _, gt_captions = next(iter(train_dataloader))
+    # all_gt_captions = accelerator.gather(gt_captions)
+
+    for i, caption in enumerate(gt_captions):
+        index = i * accelerator.num_processes + accelerator.local_process_index
+        with open(os.path.join("/weka/prior-default/georges/research/REPA/cc3m_train_captions", f'{index}.txt'), "w") as f:
+            f.write(caption + "\n")
+
     # _, _, gt_xs, _ = next(iter(train_dataloader))
     gt_xs = gt_xs[:sample_batch_size]
     gt_xs = sample_posterior(
@@ -356,8 +364,8 @@ def main(args, exp_name):
     for epoch in range(args.epochs):
         model.train()
         # TODO/NOTE: I think "raw_caption" is wrongly placed here. 
-        # for raw_image, x, context, raw_captions in train_dataloader:
-        for raw_image, x, context in train_dataloader:
+        for raw_image, x, context, raw_captions in train_dataloader:
+        # for raw_image, x, context in train_dataloader:
             if global_step == 0:
                 ys = context[:sample_batch_size].to(device) # handed-coded
             raw_image = raw_image.to(device)

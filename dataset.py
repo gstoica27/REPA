@@ -167,10 +167,17 @@ class CFGDataset(Dataset):  # for classifier free guidance
         return len(self.dataset)
 
     def __getitem__(self, item):
-        x, z, y = self.dataset[item]
+        all_stuff = self.dataset[item]
+        if len(all_stuff) == 4:
+            x, z, y, raw_caption = all_stuff
+        else:
+            x, z, y = all_stuff
         if random.random() < self.p_uncond:
             y = self.empty_token
-        return x, z, y
+        if len(all_stuff) == 4:
+            return x, z, y, raw_caption
+        else:
+            return x, z, y
 
 class MSCOCO256Features(DatasetFactory):  # the moments calculated by Stable Diffusion image encoder & the contexts calculated by clip
     def __init__(self, path, cfg=True, p_uncond=0.1, mode='train'):
@@ -218,7 +225,8 @@ class CC3MFeatureDataset(Dataset):
         z = np.load(os.path.join(self.root, f'{uid}.npy'))
         k = 0#random.randint(0, self.n_captions[uid] - 1)
         c = np.load(os.path.join(self.root, f'{uid}_{k}.npy'))
-        return x, z, c
+        raw_caption = open(os.path.join(self.root, f'{uid}.txt'), 'r').read().strip()
+        return x, z, c, raw_caption
 
 
 class CC3MFeatures(DatasetFactory):  # the moments calculated by Stable Diffusion image encoder & the contexts calculated by clip

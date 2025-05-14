@@ -161,7 +161,8 @@ def main(args):
     model_string_name = args.model.replace("/", "-")
     ckpt_string_name = os.path.basename(args.ckpt).replace(".pt", "") if args.ckpt else "pretrained"
     folder_name = f"{model_string_name}-{ckpt_string_name}-size-{args.resolution}-vae-{args.vae}-" \
-                  f"cfg-{args.cfg_scale}-seed-{args.global_seed}-{args.mode}"
+                  f"cfg-{args.cfg_scale}-guidance-H-{args.guidance_high}-L-{args.guidance_low}-heun"\
+                    f"-{arg.heun}-seed-{args.global_seed}-{args.mode}"
     # sample_folder_dir = f"{args.sample_dir}/{folder_name}"
     sample_folder_dir = os.path.join(sample_dir, folder_name)
     sample_folder_classes_dir = os.path.join(sample_folder_dir, "samples_per_class")
