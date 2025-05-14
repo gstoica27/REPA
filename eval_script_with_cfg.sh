@@ -43,7 +43,6 @@ do
             --num-steps=$3 \
             --cfg-scale=$1 \
             --guidance-high=$2 \
-            --heun \
             --sample-dir "${SAVE_DIR}"
         fi
     done 
