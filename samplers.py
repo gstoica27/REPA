@@ -219,7 +219,7 @@ def euler_sampler(
                 time_input = torch.ones(model_input.size(0)).to(
                     device=model_input.device, dtype=torch.float64
                     ) * t_next
-                9 = model(
+                d_prime = model(
                     model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
                     )[0].to(torch.float64)
                 if cfg_scale > 1.0 and t_cur <= guidance_high and t_cur >= guidance_low:
