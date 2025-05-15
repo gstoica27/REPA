@@ -324,11 +324,12 @@ def euler_maruyama_sampler(
                 #         v_cur = (v_cur + bias_lambda * bias) / (1 - bias_lambda)
                 #     else:
                 #         v_cur = (v_cur - bias_lambda * bias) / (1 - bias_lambda)
-            v_cur = debias_velocity(
-                velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
-                subtract_bias=subtract_bias, is_baseline=is_baseline, 
-                velocity_lambda=velocity_lambda, method=debias_method
-            )
+            if t_cur <= guidance_high and t_cur >= guidance_low:
+                v_cur = debias_velocity(
+                    velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
+                    subtract_bias=subtract_bias, is_baseline=is_baseline, 
+                    velocity_lambda=velocity_lambda, method=debias_method
+                )
             
             s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)
             d_cur = v_cur - 0.5 * diffusion * s_cur
@@ -394,11 +395,12 @@ def euler_maruyama_sampler(
         #         v_cur = (v_cur + bias_lambda * bias) / (1 - bias_lambda)
         #     else:
         #         v_cur = (v_cur - bias_lambda * bias) / (1 - bias_lambda)
-    v_cur = debias_velocity(
-        velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
-        subtract_bias=subtract_bias, is_baseline=is_baseline, 
-        velocity_lambda=velocity_lambda, method=debias_method
-    )
+    if t_cur <= guidance_high and t_cur >= guidance_low:
+        v_cur = debias_velocity(
+            velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
+            subtract_bias=subtract_bias, is_baseline=is_baseline, 
+            velocity_lambda=velocity_lambda, method=debias_method
+        )
 
     s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)
     diffusion = compute_diffusion(t_cur)

@@ -144,8 +144,7 @@ def main(args):
         guidance_high_str = float_to_str(args.guidance_high)
         nfe_str = str(args.num_steps)
         folder_name = "cfg-{}-guidance-{}-nfe-{}".format(cfg_str, guidance_high_str, nfe_str)
-        if args.debias_method is not None:
-            folder_name = "method-{}-".format(args.debias_method) + folder_name
+        folder_name = "method-{}-".format(args.debias_method) + folder_name
         # add bias information
         if args.bias_weight is not None:
             folder_name += "-bias-weight-{}".format(float_to_str(args.bias_weight))
