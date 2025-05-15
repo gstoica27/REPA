@@ -1,10 +1,10 @@
 # !/bin/bash
 bias_lambda=$1
 velocity_lambda=$2
-workspace="ai2/georges-explorations"
-priority="normal"
-# workspace="ai2/structured_diffusion"
-# priority="high"
+# workspace="ai2/georges-explorations"
+# priority="normal"
+workspace="ai2/structured_diffusion"
+priority="high"
 
  gantry run \
     --budget ai2/prior \
