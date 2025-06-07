@@ -52,7 +52,7 @@ def detach_and_dtype(x, dtype=torch.float32):
 def reduce_via_weighted_combination(
     velocity, interference_vector, interference_lambda, velocity_lambda
 ):
-    new_velocity = velocity_lambda * velocity + interference_lambda * interference_vector
+    new_velocity = velocity_lambda * velocity - interference_lambda * interference_vector
     return new_velocity
 
 
@@ -81,10 +81,6 @@ def euler_sampler(
         guidance_low=0.0,
         guidance_high=1.0,
         path_type="linear", # not used, just for compatability
-        record_intermediate_steps=False,
-        record_intermediate_steps_freq=None,
-        record_trajectory_structure=False,
-        trajectory_structure_type=None,
         **kwargs
         ):
     # setup conditioning
@@ -94,15 +90,6 @@ def euler_sampler(
     t_steps = torch.linspace(1, 0, num_steps+1, dtype=torch.float64)
     x_next = latents.to(torch.float64)
     device = x_next.device
-
-    if record_intermediate_steps:
-        assert record_intermediate_steps_freq is not None
-        intermediates = []
-    
-    if record_trajectory_structure:
-        assert trajectory_structure_type is not None
-        x_source = deepcopy(x_next.detach())
-        trajectory_vectors = []
     
     with torch.no_grad():
         for i, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])):
@@ -142,25 +129,7 @@ def euler_sampler(
                     d_prime = d_prime_uncond + cfg_scale * (d_prime_cond - d_prime_uncond)
                 x_next = x_cur + (t_next - t_cur) * (0.5 * d_cur + 0.5 * d_prime)
                 
-            if record_intermediate_steps and (i + 1) % record_intermediate_steps_freq == 0:
-                intermediates.append(deepcopy(x_next.detach()).to(torch.float32))
-            
-            if record_trajectory_structure:
-                if trajectory_structure_type == "segment_cosine":
-                    trajectory_vectors += [detach_and_dtype(x_next - x_cur)]
-                elif trajectory_structure_type == "source_cosine":
-                    trajectory_vectors += [detach_and_dtype(x_next - x_source)]
-    
     return_dict = {"samples": x_next}
-    
-    # last step
-    if record_intermediate_steps:
-        intermediates.append(deepcopy(x_next.detach()).to(torch.float32))
-        return_dict["intermediate_steps"] = intermediates
-        # return x_next.to(torch.float32), intermediates
-    if record_trajectory_structure:
-        pdb.set_trace()
-        return_dict["trajectory_vectors"] = torch.stack(trajectory_vectors)
     
     return return_dict
 
@@ -175,10 +144,6 @@ def euler_maruyama_sampler(
         guidance_low=0.0,
         guidance_high=1.0,
         path_type="linear",
-        record_intermediate_steps=False,
-        record_intermediate_steps_freq=None,
-        record_trajectory_structure=False,
-        trajectory_structure_type=None,
         interference_vector=None,
         interference_lambda=0.0,
         velocity_lambda=None,
@@ -195,16 +160,6 @@ def euler_maruyama_sampler(
     x_next = latents.to(torch.float64)
     device = x_next.device
 
-    if record_intermediate_steps:
-        assert record_intermediate_steps_freq is not None
-        intermediates = []
-        expecteds = []
-    
-    if record_trajectory_structure:
-        assert trajectory_structure_type is not None
-        x_source = deepcopy(x_next.detach())
-        trajectory_vectors = []
-    
     with torch.no_grad():
         for i, (t_cur, t_next) in enumerate(zip(t_steps[:-2], t_steps[1:-1])):
             dt = t_next - t_cur
@@ -240,30 +195,6 @@ def euler_maruyama_sampler(
 
             x_next =  x_cur + d_cur * dt + torch.sqrt(diffusion) * deps
             x_final = x_cur + d_cur * (t_steps[-1] - t_cur)
-            
-            if record_intermediate_steps and (i + 1) % record_intermediate_steps_freq == 0:
-                intermediates.append(deepcopy(x_next.detach().to(torch.float32)))
-                '''
-                expecteds += [
-                    deepcopy(
-                        # (latents - v_cur).detach().to(torch.float32)
-                        (x_cur + d_cur * torch.sqrt(diffusion) * deps).detach().to(torch.float32)
-                    )
-                ]
-                '''
-                expecteds += [x_final.detach().to(torch.float32)]
-            
-            if record_trajectory_structure:
-                if trajectory_structure_type == "segment_cosine":
-                    trajectory_vectors += [detach_and_dtype(x_next - x_cur)]
-                elif trajectory_structure_type == "source_cosine":
-                    trajectory_vectors += [detach_and_dtype(x_next - x_source)]
-                elif trajectory_structure_type == "straightness":
-                    trajectory_vectors += [detach_and_dtype(x_next - x_cur)]
-                elif trajectory_structure_type == "length":
-                    trajectory_vectors += [detach_and_dtype(x_next - x_cur)]
-                else:
-                    raise NotImplementedError("trajectory structure type not implemented")
 
     # last step
     t_cur, t_next = t_steps[-2], t_steps[-1]
@@ -301,26 +232,5 @@ def euler_maruyama_sampler(
     mean_x = x_cur + dt * d_cur
     
     return_dict = {"samples": mean_x}
-    
-    if record_intermediate_steps:
-        intermediates.append(deepcopy(mean_x.detach().to(torch.float32)))
-        return_dict["intermediate_steps"] = intermediates
-        return_dict["expecteds"] = expecteds
-        # return mean_x.to(torch.float32), intermediates
-    
-    if record_trajectory_structure:
-        if trajectory_structure_type == "segment_cosine":
-            trajectory_vectors += [detach_and_dtype(mean_x - x_cur)]
-        elif trajectory_structure_type == "source_cosine":
-            trajectory_vectors += [detach_and_dtype(mean_x - x_source)]
-        elif trajectory_structure_type == "straightness":
-            trajectory_vectors += [detach_and_dtype(mean_x - x_cur)]
-        elif trajectory_structure_type == "length":
-            trajectory_vectors += [detach_and_dtype(mean_x - x_cur)]
-        else:
-            raise NotImplementedError("trajectory structure type not implemented")
-        
-        return_dict["trajectory_vectors"] = torch.stack(trajectory_vectors)
-    
     # return mean_x
     return return_dict

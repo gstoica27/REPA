@@ -121,9 +121,9 @@ def main(args):
 
     if args.interference_path is not None:
         # Load interference
-        interference = torch.load(args.interference_path, map_location=f'cuda:{device}').to(torch.float32)[None]
+        interference_vector = torch.load(args.interference_path, map_location=f'cuda:{device}').to(torch.float32)[None]
     else:
-        interference = None
+        interference_vector = None
 
     sample_dir = args.sample_dir
     # create interference method folder
@@ -219,7 +219,7 @@ def main(args):
             guidance_high=args.guidance_high,
             path_type=args.path_type,
             interference_vector=interference_vector,
-            interference_lambda=args.interference_lambda,
+            interference_lambda=args.interference_weight,
             velocity_lambda=args.velocity_weight,
             apply_reduction=args.reduce_interference,
         )
