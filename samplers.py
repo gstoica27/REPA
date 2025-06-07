@@ -49,107 +49,25 @@ def detach_and_dtype(x, dtype=torch.float32):
     return x.detach().to(dtype=dtype)
 
 
-def debias_via_convex_combination(
-        velocity, bias, bias_lambda, subtract_bias=False, is_baseline=False
+def reduce_via_weighted_combination(
+    velocity, interference_vector, interference_lambda, velocity_lambda
 ):
-    # pdb.set_trace()
-    if is_baseline and subtract_bias:
-        new_velocity = (velocity + bias_lambda * bias) / (1 - bias_lambda)
-    elif is_baseline and not subtract_bias:
-        new_velocity = (velocity - bias_lambda * bias) / (1 - bias_lambda)
-    elif not is_baseline and subtract_bias:
-        new_velocity = (1 - bias_lambda) * velocity - bias_lambda * bias
-    elif not is_baseline and not subtract_bias:
-        new_velocity = (1 - bias_lambda) * velocity + bias_lambda * bias
-    else:
-        raise NotImplementedError("is_baseline and subtract_bias not implemented")
+    new_velocity = velocity_lambda * velocity + interference_lambda * interference_vector
     return new_velocity
 
 
-def debias_via_weighted_combination(
-    velocity, bias, bias_lambda, velocity_lambda, subtract_bias=False, is_baseline=False
+def reduce_interference(
+    velocity, interference_vector, interference_lambda, 
+    velocity_lambda=None, apply_reduction=False
 ):
-    # pdb.set_trace()
-    if is_baseline and subtract_bias:
-        new_velocity = (velocity + bias_lambda * bias) / velocity_lambda
-    elif is_baseline and not subtract_bias:
-        new_velocity = (velocity - bias_lambda * bias) / velocity_lambda
-    elif not is_baseline and subtract_bias:
-        new_velocity = velocity_lambda * velocity - bias_lambda * bias
-    elif not is_baseline and not subtract_bias:
-        new_velocity = velocity_lambda * velocity + bias_lambda * bias
-    else:
-        raise NotImplementedError("is_baseline and subtract_bias not implemented")
-    return new_velocity
-
-
-def debias_via_orthogonal_projection(
-    velocity, bias, bias_lambda, velocity_lambda=None, subtract_bias=False, is_baseline=False
-):
-    # pdb.set_trace()
-    if velocity_lambda is None:
-        velocity_lambda = 1 - bias_lambda
-    debiased_velocity = debias_via_weighted_combination(
-        velocity, bias, bias_lambda, velocity_lambda, subtract_bias=subtract_bias, is_baseline=is_baseline
-    )
-    shape = velocity.shape
-    velocity_cond, velocity_uncond = debiased_velocity.chunk(2)
-    bias_onto_uncond = (
-        (
-            (bias * velocity_uncond).sum((1,2,3), keepdim=True) / (velocity_uncond * velocity_uncond).sum((1,2,3), keepdim=True)
-        ) * velocity_uncond
-    )
-    bias_orth_uncond = (bias - bias_onto_uncond) * bias_lambda
-    if subtract_bias:
-        new_uncond = velocity_uncond - bias_onto_uncond
-    else:
-        new_uncond = velocity_uncond + bias_onto_uncond
-    new_velocity = torch.cat([velocity_cond, new_uncond], dim=0)
-    return new_velocity
-
-
-def orthogonalize_unconditional(velocity, bias_lambda=0.05, velocity_lambda=0.95):
-    # pdb.set_trace()
-    velocity_cond, velocity_uncond = velocity.chunk(2)
-    unconditional_projection = (
-        (
-            (velocity_cond * velocity_uncond).sum((1,2,3), keepdim=True) / (velocity_cond * velocity_cond).sum((1,2,3), keepdim=True)
-        ) * velocity_cond
-    )
-    velocity_orth_uncond = (velocity_uncond - unconditional_projection)
-    velocity_uncond = velocity_lambda * velocity_orth_uncond + bias_lambda * unconditional_projection
-    new_velocity = torch.cat([velocity_cond, velocity_uncond], dim=0)
-    return new_velocity
-
-
-def debias_velocity(velocity, bias, bias_lambda, method=None, velocity_lambda=None, subtract_bias=False, is_baseline=False):
-    # pdb.set_trace()
-    if method is None:
+    if not apply_reduction:
         return velocity
-    elif method == 'convex':
-        new_velocity = debias_via_convex_combination(
-            velocity=velocity, bias=bias, bias_lambda=bias_lambda,
-            subtract_bias=subtract_bias, is_baseline=is_baseline
-        )
-    elif method == 'weighted':
-        new_velocity = debias_via_weighted_combination(
-            velocity=velocity, bias=bias, bias_lambda=bias_lambda,
-            velocity_lambda=velocity_lambda, subtract_bias=subtract_bias,
-            is_baseline=is_baseline
-        )
-    elif method == 'weighted_orthogonal':
-        new_velocity = debias_via_orthogonal_projection(
-            velocity=velocity, bias=bias, bias_lambda=bias_lambda,
-            velocity_lambda=velocity_lambda, subtract_bias=subtract_bias,
-            is_baseline=is_baseline
-        )
-    elif method == 'orthogonal_unconditional':
-        new_velocity = orthogonalize_unconditional(
-            velocity=velocity, bias_lambda=bias_lambda, 
-            velocity_lambda=velocity_lambda
-        )
-    else:
-        raise NotImplementedError("Debiasing method not implemented")
+     
+    new_velocity = reduce_via_weighted_combination(
+        velocity=velocity, interference_vector=interference_vector, 
+        interference_lambda=interference_lambda,
+        velocity_lambda=velocity_lambda
+    )
     return new_velocity
 
 
@@ -200,9 +118,6 @@ def euler_sampler(
             d_cur = model(
                 model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
                 )[0].to(torch.float64)
-            
-            # if bias is not None:
-            #     d_cur = (1 - bias_weight) * d_cur + bias_weight * bias
 
             if cfg_scale > 1. and t_cur <= guidance_high and t_cur >= guidance_low:
                 d_cur_cond, d_cur_uncond = d_cur.chunk(2)
@@ -264,12 +179,10 @@ def euler_maruyama_sampler(
         record_intermediate_steps_freq=None,
         record_trajectory_structure=False,
         trajectory_structure_type=None,
-        bias=None,
-        bias_lambda=0.0,
-        subtract_bias=False,
-        is_baseline=False,
+        interference_vector=None,
+        interference_lambda=0.0,
         velocity_lambda=None,
-        debias_method=None,
+        apply_reduction=False,
         ):
     # setup conditioning
     if cfg_scale > 1.0:
@@ -313,22 +226,10 @@ def euler_maruyama_sampler(
                 model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
                 )[0].to(torch.float64)
 
-            # if bias is not None:
-                # if not is_baseline:
-                #     if subtract_bias:
-                #         v_cur = (1 - bias_lambda) * v_cur - bias_lambda * bias
-                #     else:
-                #         v_cur = (1 - bias_lambda) * v_cur + bias_lambda * bias
-                # else:
-                #     if subtract_bias:
-                #         v_cur = (v_cur + bias_lambda * bias) / (1 - bias_lambda)
-                #     else:
-                #         v_cur = (v_cur - bias_lambda * bias) / (1 - bias_lambda)
             if t_cur <= guidance_high and t_cur >= guidance_low:
-                v_cur = debias_velocity(
-                    velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
-                    subtract_bias=subtract_bias, is_baseline=is_baseline, 
-                    velocity_lambda=velocity_lambda, method=debias_method
+                v_cur = reduce_interference(
+                    velocity=v_cur, interference_vector=interference_vector, interference_lambda=interference_lambda, 
+                    velocity_lambda=velocity_lambda, apply_reduction=apply_reduction
                 )
             
             s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)
@@ -384,22 +285,10 @@ def euler_maruyama_sampler(
         model_input.to(dtype=_dtype), time_input.to(dtype=_dtype), **kwargs
         )[0].to(torch.float64)
     
-    # if bias is not None:
-        # if not is_baseline:
-        #     if subtract_bias:
-        #         v_cur = (1 - bias_lambda) * v_cur - bias_lambda * bias
-        #     else:
-        #         v_cur = (1 - bias_lambda) * v_cur + bias_lambda * bias
-        # else:
-        #     if subtract_bias:
-        #         v_cur = (v_cur + bias_lambda * bias) / (1 - bias_lambda)
-        #     else:
-        #         v_cur = (v_cur - bias_lambda * bias) / (1 - bias_lambda)
     if t_cur <= guidance_high and t_cur >= guidance_low:
-        v_cur = debias_velocity(
-            velocity=v_cur, bias=bias, bias_lambda=bias_lambda, 
-            subtract_bias=subtract_bias, is_baseline=is_baseline, 
-            velocity_lambda=velocity_lambda, method=debias_method
+        v_cur = reduce_interference(
+            velocity=v_cur, interference_vector=interference_vector, interference_lambda=interference_lambda, 
+            velocity_lambda=velocity_lambda, apply_reduction=apply_reduction
         )
 
     s_cur = get_score_from_velocity(v_cur, model_input, time_input, path_type=path_type)

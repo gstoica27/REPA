@@ -119,41 +119,35 @@ def main(args):
     assert args.cfg_scale >= 1.0, "In almost all cases, cfg_scale be >= 1.0"
     using_cfg = args.cfg_scale > 1.0
 
-    if args.bias_path is not None:
-        # Load bias
-        bias = torch.load(args.bias_path, map_location=f'cuda:{device}').to(torch.float32)[None]
+    if args.interference_path is not None:
+        # Load interference
+        interference = torch.load(args.interference_path, map_location=f'cuda:{device}').to(torch.float32)[None]
     else:
-        bias = None
+        interference = None
 
     sample_dir = args.sample_dir
-    # create bias method folder
+    # create interference method folder
     # pdb.set_trace()
-    if args.bias_path is not None:
-        bias_type = '-'.join(args.bias_path.split("/")[-1].split(".")[0].split('_')[1:])
-        bias_application = "add" if not args.subtract_bias else "subtract"
-        folder_name = f"{bias_application}-{bias_type}"
+    if args.interference_path is not None:
+        interference_type = '-'.join(args.interference_path.split("/")[-1].split(".")[0].split('_')[1:])
+        folder_name = f"{interference_type}"
         sample_dir = os.path.join(sample_dir, folder_name)
     
         model_name = ckpt_path.split("/")[-3]
         sample_dir = os.path.join(sample_dir, model_name)
 
     # create cfg folder
-    if args.debias_method is not None:
+    if args.reduce_interference:
         float_to_str = lambda x: str(x).replace(".", "p")
         cfg_str = float_to_str(args.cfg_scale)
         guidance_high_str = float_to_str(args.guidance_high)
         nfe_str = str(args.num_steps)
         folder_name = "cfg-{}-guidance-{}-nfe-{}".format(cfg_str, guidance_high_str, nfe_str)
-        folder_name = "method-{}-".format(args.debias_method) + folder_name
-        # add bias information
-        if args.bias_weight is not None:
-            folder_name += "-bias-weight-{}".format(float_to_str(args.bias_weight))
+        # add intereference information
+        if args.interference_weight is not None:
+            folder_name += "-interference-weight-{}".format(float_to_str(args.interference_weight))
         if args.velocity_weight is not None:
             folder_name += "-velocity-weight-{}".format(float_to_str(args.velocity_weight))
-        # if args.bias_path is not None:
-        #     bias_lambda_str = float_to_str(args.bias_weight)
-        #     velocity_lambda_str = float_to_str(args.velocity_weight) if args.velocity_weight is not None else float_to_str(1 - args.bias_weight)
-        #     folder_name += "-bias-lambda-{}-velocity-lambda-{}".format(bias_lambda_str, velocity_lambda_str)
         
         sample_dir = os.path.join(sample_dir, folder_name)
     # pdb.set_trace()
@@ -204,12 +198,10 @@ def main(args):
         print(f"  - path_type: {args.path_type}")
         print(f"  - num_steps: {args.num_steps}")
         print(f"  - heun: {args.heun}")
-        print(f"  - subtract_bias: {args.subtract_bias}")
-        print(f"  - bias_path: {args.bias_path}")
-        print(f"  - bias_lambda: {args.bias_weight}")
+        print(f"  - interference_path: {args.interference_path}")
+        print(f"  - interference_lambda: {args.interference_weight}")
         print(f"  - velocity_lambda: {args.velocity_weight}")
-        print(f"  - is_baseline: {args.is_baseline}")
-        print(f"  - debias_method: {args.debias_method}")
+        print(f"  - reduce_interference: {args.reduce_interference}")
     for _ in pbar:
         # Sample inputs:
         z = torch.randn(n, model.in_channels, latent_size, latent_size, device=device)
@@ -226,12 +218,10 @@ def main(args):
             guidance_low=args.guidance_low,
             guidance_high=args.guidance_high,
             path_type=args.path_type,
-            bias=bias,
-            bias_lambda=args.bias_weight,
-            subtract_bias=args.subtract_bias,
-            is_baseline=args.is_baseline,
+            interference_vector=interference_vector,
+            interference_lambda=args.interference_lambda,
             velocity_lambda=args.velocity_weight,
-            debias_method=args.debias_method,
+            apply_reduction=args.reduce_interference,
         )
         with torch.no_grad():
             if args.mode == "sde":
@@ -319,13 +309,11 @@ if __name__ == "__main__":
 
     # will be deprecated
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False) # only for ode
-    # Add bias to model
-    parser.add_argument('--bias-path', type=str, default=None)
-    parser.add_argument('--bias-weight', type=float, default=None)
+    # Add interference to model
+    parser.add_argument('--interference-path', type=str, default=None)
+    parser.add_argument('--interference-weight', type=float, default=None)
     parser.add_argument('--velocity-weight', type=float, default=None)
-    parser.add_argument('--subtract-bias', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--is-baseline', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--debias-method', type=str, default=None)
+    parser.add_argument('--reduce-interference', action=argparse.BooleanOptionalAction, default=False)
 
 
     args = parser.parse_args()

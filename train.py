@@ -152,27 +152,17 @@ def create_experiment_name(args):
     # Add batch size to name
     exp_name += f"-bs{args.batch_size}"
     # add denoising loss to name
-    if args.denoising_type == 'mean':
+    if args.loss_type == 'mean':
         denoising_name = 'mean'
-    elif args.denoising_type == 'triplet_any_noise':
-        denoising_name = 'tripany'
-    # elif args.denoising_type == 'class_conditioned_triplet_mse':
-        # denoising_name = 'cctripmse'
-    elif args.denoising_type == 'triplet_same_noise':
-        denoising_name = 'tripsame'
-    elif args.denoising_type == 'triplet_target_conditioned':
-        denoising_name = 'triptarget'
-    elif args.denoising_type == 'triplet_xt':
-        denoising_name = 'tripxt'
+    elif args.loss_type == 'contrastive':
+        denoising_name = 'contrastive'
     else:
         raise NotImplementedError()
     
-    if 'trip' in denoising_name and args.is_class_conditioned:
+    if denoising_name == 'contrastive' and args.is_class_conditioned:
         denoising_name = 'cc' + denoising_name
-    if args.and_weigh_on_time:
-        denoising_name = 'withtime' + denoising_name
     
-    coeff_str = str(args.denoising_temp).replace('.', 'p').capitalize()
+    coeff_str = str(args.contrastive_weight).replace('.', 'p').capitalize()
     exp_name += f"-{denoising_name}Temp{coeff_str}"
     
     exp_name += f"-res{args.resolution}"
@@ -257,7 +247,7 @@ def main(args, exp_name):
         ).view(1, 4, 1, 1).to(device)
 
     # create loss function
-    if args.denoising_type == 'mean':
+    if args.loss_type == 'mean':
         from loss import SILoss    
         loss_fn = SILoss(
             prediction=args.prediction,
@@ -278,12 +268,10 @@ def main(args, exp_name):
             latents_scale=latents_scale,
             latents_bias=latents_bias,
             weighting=args.weighting,
-            denoising_type=args.denoising_type,
-            denoising_weight=args.denoising_temp,
+            contrastive_weight=args.contrastive_weight,
             null_class_idx=args.num_classes,
             dont_contrast_on_unconditional=args.dont_contrast_on_unconditional,
             is_class_conditioned=args.is_class_conditioned,
-            weigh_on_time=args.and_weigh_on_time,
         )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -320,30 +308,12 @@ def main(args, exp_name):
     model.train()  # important! This enables embedding dropout for classifier-free guidance
     ema.eval()  # EMA model should always be in eval mode
     
-    # resume:
     global_step = 0
-    # if args.resume_step > 0:
     if args.resume > 0:
-        # ckpt_name = str(args.resume_step).zfill(7) +'.pt'
-        # ckpt = torch.load(
-        #     f'{os.path.join(args.output_dir, exp_name)}/checkpoints/{ckpt_name}',
-        #     map_location='cpu',
-        #     )
-        # model.load_state_dict(ckpt['model'])
-        # ema.load_state_dict(ckpt['ema'])
-        # optimizer.load_state_dict(ckpt['opt'])
-        # global_step = ckpt['steps']
-
         experiment_dir = f'{os.path.join(args.output_dir, exp_name, "checkpoints")}'
         if len(os.listdir(experiment_dir)) > 0:
             ckpt_name = sorted(os.listdir(experiment_dir))[-1]
             ckpt = torch.load(f'{experiment_dir}/{ckpt_name}', map_location='cpu')
-
-            # ckpt_name = str(args.resume_step).zfill(7) +'.pt'
-            # ckpt = torch.load(
-            #     f'{os.path.join(args.output_dir, exp_name)}/checkpoints/{ckpt_name}',
-            #     map_location='cpu',
-            #     )
             model.load_state_dict(ckpt['model'])
             ema.load_state_dict(ckpt['ema'])
             optimizer.load_state_dict(ckpt['opt'])
@@ -499,11 +469,9 @@ def parse_args(input_args=None):
 
     # logging:
     parser.add_argument("--output-dir", type=str, default="exps")
-    # parser.add_argument("--exp-name", type=str, required=True)
     parser.add_argument("--logging-dir", type=str, default="logs")
     parser.add_argument("--report-to", type=str, default="wandb")
     parser.add_argument("--sampling-steps", type=int, default=10000)
-    # parser.add_argument("--resume-step", type=int, default=0)
     parser.add_argument("--resume", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--wandb-project", type=str, default="REPA")
 
@@ -550,31 +518,13 @@ def parse_args(input_args=None):
     parser.add_argument("--weighting", default="uniform", type=str, help="Max gradient norm.")
     parser.add_argument("--legacy", action=argparse.BooleanOptionalAction, default=False)
     
-    # # Structure Loss
-    # parser.add_argument("--struct-coeff", type=float, default=0.0)
-    # parser.add_argument('--struct-method', type=str, default=None, choices=[None, "between_images", "between_tokens", "between_images_per_token"])
-    # parser.add_argument('--struct-add-relu', action=argparse.BooleanOptionalAction, default=True)
-    # parser.add_argument('--struct-encoder-depth', type=int, default=8)
-    
-    # Additional terms
-    parser.add_argument(
-        "--denoising-type", 
-        type=str, 
-        default="mean", 
-        # choices=[
-        #     "mean", 
-        #     "triplet_any_noise", 
-        #     "class_conditioned_triplet_mse",
-        #     "triplet_same_noise"
-        # ]
-    )
-    parser.add_argument("--denoising-temp", default=1.0, type=float, help="Temperature for the denoising loss.")
+    # Contrastive Terms
+    parser.add_argument("--loss-type", type=str, default="mean") # can also be contrastive
+    parser.add_argument("--contrastive-weight", default=1.0, type=float, help="Temperature for the contrastive loss.")
     parser.add_argument("--dont-contrast-on-unconditional", action=argparse.BooleanOptionalAction, default=False,
                         help="If True, apply contrastive loss on unconditional samples.")
     parser.add_argument("--is-class-conditioned", action=argparse.BooleanOptionalAction, default=False, 
                         help="If True, apply class conditioning for triplet loss (only for triplet loss). ")
-    parser.add_argument('--and-weigh-on-time', action=argparse.BooleanOptionalAction, default=False,
-                        help="If True, apply time weighting for triplet loss (only for triplet loss).")
     
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -600,22 +550,7 @@ if __name__ == "__main__":
                 break
         dist.barrier()
     
-    # import shutil
-    # if not os.path.exists('/root/.cache/torch/hub/facebookresearch_dinov2_main/hubconf.py'):
-    #     print("Creating symlink...")
-    #     shutil.copytree(
-    #         '/weka/prior-default/georges/redundancies/facebookresearch_dinov2_main',
-    #         '/root/.cache/torch/hub/facebookresearch_dinov2_main',
-    #         dirs_exist_ok=True,
-    #         symlinks=True,
-    #     )
     exp_name = create_experiment_name(args)
-    # print("The experiment name is: ", exp_name)
-    # try:
-    #     main(args, exp_name)
-    # except:
-    #     print("Retrying....")
-    #     main(args, exp_name)
     main(args, exp_name)
 
 
