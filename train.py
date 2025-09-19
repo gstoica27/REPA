@@ -248,7 +248,7 @@ def main(args, exp_name):
             latents_bias=latents_bias,
             weighting=args.weighting,
         )
-    else:
+    elif args.loss_type == "cfm":
         from triplet_loss import TripletSILoss
         loss_fn = TripletSILoss(
             prediction=args.prediction,
@@ -262,6 +262,19 @@ def main(args, exp_name):
             null_class_idx=args.num_classes,
             dont_contrast_on_unconditional=args.dont_contrast_on_unconditional,
             is_class_conditioned=args.is_class_conditioned,
+        )
+    elif args.loss_type == "cbc":
+        from contrast_by_class import ContrastByClass
+        loss_fn = ContrastByClass(
+            prediction=args.prediction,
+            path_type=args.path_type, 
+            encoders=encoders,
+            accelerator=accelerator,
+            latents_scale=latents_scale,
+            latents_bias=latents_bias,
+            weighting=args.weighting,
+            contrastive_weight=args.contrastive_weight,
+            null_class_idx=args.num_classes,
         )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")

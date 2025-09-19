@@ -47,8 +47,18 @@ def class_conditioned_sampling(labels):
     assert (choices != torch.arange(bsz, device=labels.device)).all(), "Self-sampling detected in class_conditioned_sampling"
     return choices
 
+def sample_other_classes(labels):
+    bsz = labels.shape[0]
+    num_classes = labels.max() + 1
+    random_labels = torch.randint(0, num_classes, (bsz,), device=labels.device)
+    mask = random_labels == labels
+    while mask.any():
+        random_labels[mask] = torch.randint(0, num_classes, (mask.sum(),), device=labels.device)
+        mask = random_labels == labels
+    return random_labels
 
-class TripletSILoss:
+
+class ContrastByClass:
     def __init__(
             self,
             prediction='v',
@@ -95,69 +105,6 @@ class TripletSILoss:
 
         return alpha_t, sigma_t, d_alpha_t, d_sigma_t
     
-    def compute_triplet_loss_efficiently(self, x, y, labels=None):
-        x = x.flatten(1)
-        y = y.flatten(1)
-        # Obtain positive samples and compute error
-        y_pos = y
-        pos_error = mean_flat((x - y_pos) ** 2)
-        bsz = x.shape[0]
-        choices = torch.tile(torch.arange(bsz), (bsz, 1)).to(x.device)
-        choices.fill_diagonal_(-1.)
-        choices = choices.sort(dim=1)[0][:, 1:]
-        choices = choices[torch.arange(bsz), torch.randint(0, bsz-1, (bsz,))]
-        y_neg = y[choices]
-        # Compute error
-        if self.dont_contrast_on_unconditional:
-            non_nulls = labels != self.null_class_idx
-        else:
-            non_nulls = torch.ones_like(labels, dtype=torch.bool)
-        neg_elem_error = ((x - y_neg) ** 2) * non_nulls.to(x.device).unsqueeze(-1)
-        neg_elem_error = neg_elem_error
-        neg_error = mean_flat(neg_elem_error) * bsz / non_nulls.sum() # rescale to account for null classes
-        # Compute loss
-        loss = pos_error - self.temperature * neg_error
-        # return loss
-        return {
-            "loss": loss,
-            "flow_loss": pos_error,
-            "contrastive_loss": neg_error
-        }
-    
-    def compute_class_conditioned_triplet_loss(self, x, y, labels=None):
-        negative_idxs = class_conditioned_sampling(labels)
-        bsz = x.shape[0]
-        x = x.flatten(1)
-        y = y.flatten(1)
-        # Obtain positive samples and compute error
-        y_pos = y
-        pos_error = mean_flat((x - y_pos) ** 2)
-        y_neg = y[negative_idxs]
-        if self.dont_contrast_on_unconditional:
-            non_nulls = labels != self.null_class_idx
-        else:
-            non_nulls = torch.ones_like(labels, dtype=torch.bool)
-        neg_elem_error = ((x - y_neg) ** 2) * non_nulls.to(x.device).unsqueeze(-1)
-        neg_error = mean_flat(neg_elem_error) * bsz / non_nulls.sum() # rescale to account for null classes
-        # Compute loss
-        loss = pos_error - self.temperature * neg_error
-        return {
-            "loss": loss,
-            "flow_loss": pos_error,
-            "contrastive_loss": neg_error
-        }
-
-
-    def contrastive_loss(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None, **kwargs):
-        model_target = d_alpha_t * target_images + d_sigma_t * noises
-        loss = self.compute_triplet_loss_efficiently(pred, model_target, labels)
-        return loss
-    
-    def triplet_same_noise(self, pred, target_images, d_alpha_t, d_sigma_t, noises, labels=None):
-        reconstructed_target = (pred - d_sigma_t * noises) / d_alpha_t
-        loss = self.compute_triplet_loss(reconstructed_target, target_images, labels)
-        return loss
-    
     def __call__(self, model, images, model_kwargs=None, zs=None):
         if model_kwargs == None:
             model_kwargs = {}
@@ -177,21 +124,27 @@ class TripletSILoss:
         
         noises = torch.randn_like(images)
         alpha_t, sigma_t, d_alpha_t, d_sigma_t = self.interpolant(time_input)
-            
+        
+        model_target = d_alpha_t * images + d_sigma_t * noises
         model_input = alpha_t * images + sigma_t * noises
         model_output, zs_tilde, labels = model(model_input, time_input.flatten(), **model_kwargs)
-        # model_output, zs_tilde = model(model_input, time_input.flatten(), **model_kwargs)
-        # pdb.set_trace()
-        denoising_loss = self.contrastive_loss(
-            pred=model_output, 
-            target_images=images, 
-            d_alpha_t=d_alpha_t, 
-            d_sigma_t=d_sigma_t, 
-            noises=noises,
-            labels=labels,
-            noised_images=model_input,
-            time=time_input, 
-        )
+        positive_loss = mean_flat((model_output - model_target) ** 2)
+        pdb.set_trace()
+        negative_labels = sample_other_classes(model_kwargs['y'])
+        model_kwargs['y'] = negative_labels
+        neg_output, _, _ = model(model_input, time_input.flatten(), **model_kwargs)
+        elementwise_neg_loss = (model_output - neg_output.detach()) ** 2
+        if self.null_class_idx is not None:
+            elementwise_neg_loss = elementwise_neg_loss[labels != self.null_class_idx]
+        negative_loss = mean_flat(elementwise_neg_loss)
+        total_loss = positive_loss - self.temperature * negative_loss
+
+        denoising_loss = {
+            "loss": total_loss,
+            "flow_loss": positive_loss,
+            "contrastive_loss": negative_loss
+        }
+        pdb.set_trace()
         # projection loss
         proj_loss = 0.
         bsz = zs[0].shape[0]
