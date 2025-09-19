@@ -828,7 +828,7 @@
 
 gantry run \
     --budget ai2/prior \
-    --name "SiTXL2-BL-Is-Bias-The-Answer-FID50K-Eval-Subtract-Latent-Bias-CFG-NFE-200-Lambda0p05" \
+    --name "SiTXL2-BL-Is-Bias-The-Answer-FID50K-Eval-Add-Latent-Bias-CFG-NFE-200-Lambda0p05" \
     --priority high \
     --gpus 8 \
     --weka "prior-default:/weka/prior-default" \
@@ -855,8 +855,7 @@ gantry run \
     --cfg-scale=1.85 \
     --guidance-high=0.65 \
     --sample-dir /weka/oe-training-default/georges/samples/biased-cfg2/subtract-latent-bias/linear-dinov2-b-enc8/cfg-1p85-guidance-0p65-nfe-200-lambda0p05 \
-    --bias-path /weka/prior-default/georges/research/REPA/biases/imnet256_latent_bias.pt \
-    --bias-weight 0.05 \
-    --is-baseline \
-    --subtract-bias
+    --interference-path /weka/prior-default/georges/research/REPA/biases/imnet256_latent_bias.pt \
+    --interference-weight 0.05 \
+    --reduce-interference
     

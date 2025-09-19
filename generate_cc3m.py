@@ -37,8 +37,13 @@ def create_npz_from_sample_folder(sample_dir, num=50_000):
     """
     Builds a single .npz file from a folder of .png samples.
     """
+    num = min(num, len(os.listdir(sample_dir))) # in case we have fewer available samples
     samples = []
     for i in tqdm(range(num), desc="Building .npz file from samples"):
+        # index = f"{i:06d}"
+        # if not os.path.exists(f"{sample_dir}/{index}.png"):
+        #     print("reached end of sample folder")
+        #     break
         sample_pil = Image.open(f"{sample_dir}/{i:06d}.png")
         sample_np = np.asarray(sample_pil).astype(np.uint8)
         samples.append(sample_np)
@@ -181,7 +186,7 @@ def main(args):
                 index = i * accelerator.num_processes + accelerator.local_process_index + total
                 Image.fromarray(sample).save(f"{sample_folder_dir}/{index:06d}.png")
                 Image.fromarray(real_sample).save(f"{real_sample_folder_dir}/{index:06d}.png")
-                with open(os.path.join(real_sample_folder_dir, f'{index:06d}.txt'), "w") as f:
+                with open(os.path.join(captions_sample_folder_dir, f'{index:06d}.txt'), "w") as f:
                     f.write(caption + "\n")
             # batch_clipsim = clipsim_fn(
             #     torch.from_numpy(samples/255.).to(device).permute(0, 3, 1, 2), raw_captions
@@ -200,12 +205,12 @@ def main(args):
 
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
     dist.barrier()
-    if accelerator.is_main_process:
-        # create_npz_from_sample_folder(sample_folder_dir, 40192)
-        create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
-        # create_npz_from_sample_folder(real_sample_folder_dir, 40192)
-        print("Done.")
-    dist.barrier()
+    # if accelerator.is_main_process:
+    #     # create_npz_from_sample_folder(sample_folder_dir, 40192)
+    #     create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
+    #     # create_npz_from_sample_folder(real_sample_folder_dir, 40192)
+    #     print("Done.")
+    # dist.barrier()
     dist.destroy_process_group()
 
 if __name__ == "__main__":
