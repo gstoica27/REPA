@@ -164,6 +164,8 @@ def create_experiment_name(args):
         denoising_name = 'triptarget'
     elif args.denoising_type == 'triplet_xt':
         denoising_name = 'tripxt'
+    elif args.denoising_type == "cbc":
+        denoising_name = "cbc"
     else:
         raise NotImplementedError()
     
@@ -268,7 +270,13 @@ def main(args, exp_name):
             latents_bias=latents_bias,
             weighting=args.weighting,
         )
-    else:
+    elif args.denoising_type in [
+        'triplet_any_noise', 
+        'class_conditioned_triplet_mse', 
+        'triplet_same_noise', 
+        'triplet_target_conditioned', 
+        'triplet_xt'
+    ]:
         from triplet_loss import TripletSILoss
         loss_fn = TripletSILoss(
             prediction=args.prediction,
@@ -284,6 +292,19 @@ def main(args, exp_name):
             dont_contrast_on_unconditional=args.dont_contrast_on_unconditional,
             is_class_conditioned=args.is_class_conditioned,
             weigh_on_time=args.and_weigh_on_time,
+        )
+    elif args.denoising_type == "cbc":
+        from contrast_by_class import ContrastByClass
+        loss_fn = ContrastByClass(
+            prediction=args.prediction,
+            path_type=args.path_type, 
+            encoders=encoders,
+            accelerator=accelerator,
+            latents_scale=latents_scale,
+            latents_bias=latents_bias,
+            weighting=args.weighting,
+            contrastive_weight=args.denoising_temp,
+            null_class_idx=args.num_classes,
         )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")

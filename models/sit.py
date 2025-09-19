@@ -93,6 +93,7 @@ class LabelEmbedder(nn.Module):
 
     def forward(self, labels, train, force_drop_ids=None):
         use_dropout = self.dropout_prob > 0
+        # import pdb; pdb.set_trace()
         if (train and use_dropout) or (force_drop_ids is not None):
             labels = self.token_drop(labels, force_drop_ids)
         embeddings = self.embedding_table(labels)
