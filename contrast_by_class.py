@@ -133,11 +133,11 @@ class ContrastByClass:
         # pdb.set_trace()
         negative_labels = sample_other_classes(labels)
         model_kwargs['y'] = negative_labels
-        model.training = False
-        # pdb.set_trace()
-        neg_output, _, _ = model(model_input, time_input.flatten(), **model_kwargs)
-        model.training = True
-        elementwise_neg_loss = (model_output - neg_output.detach()) ** 2
+        # # pdb.set_trace()
+        with torch.no_grad():
+            neg_output = model(model_input, time_input.flatten(), dont_drop=True, **model_kwargs)[0].detach()
+        #     neg_output = 1.0
+        elementwise_neg_loss = (model_output - neg_output) ** 2
         if self.null_class_idx is not None:
             elementwise_neg_loss = elementwise_neg_loss[labels != self.null_class_idx]
         negative_loss = mean_flat(elementwise_neg_loss)

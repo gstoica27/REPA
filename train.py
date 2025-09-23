@@ -496,7 +496,7 @@ def main(args, exp_name):
                 "proj_loss": accelerator.gather(proj_loss_mean).mean().detach().item(),
                 "grad_norm": accelerator.gather(grad_norm).mean().detach().item(),
                 "flow_loss": accelerator.gather(loss_dict["flow_loss"]).mean().detach().item(),
-                "contrastive_loss": accelerator.gather(loss_dict["contrastive_loss"]).mean().detach().item(),
+                # "contrastive_loss": accelerator.gather(loss_dict["contrastive_loss"]).mean().detach().item(),
             }
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)

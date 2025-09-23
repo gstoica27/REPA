@@ -91,10 +91,12 @@ class LabelEmbedder(nn.Module):
         labels = torch.where(drop_ids, self.num_classes, labels)
         return labels
 
-    def forward(self, labels, train, force_drop_ids=None):
+    def forward(self, labels, train, force_drop_ids=None, dont_drop=False):
         use_dropout = self.dropout_prob > 0
-        # import pdb; pdb.set_trace()
-        if (train and use_dropout) or (force_drop_ids is not None):
+        # if dont_drop: 
+        #     import pdb; pdb.set_trace()
+
+        if ((train and use_dropout) or (force_drop_ids is not None)) and (not dont_drop):
             labels = self.token_drop(labels, force_drop_ids)
         embeddings = self.embedding_table(labels)
         return embeddings, labels
@@ -264,7 +266,7 @@ class SiT(nn.Module):
         imgs = x.reshape(shape=(x.shape[0], c, h * p, w * p))
         return imgs
     
-    def forward(self, x, t, y, return_logvar=False):
+    def forward(self, x, t, y, return_logvar=False, dont_drop=False):
         """
         Forward pass of SiT.
         x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
@@ -275,7 +277,9 @@ class SiT(nn.Module):
         N, T, D = x.shape
         # timestep and class embedding
         t_embed = self.t_embedder(t)                   # (N, D)
-        y, labels = self.y_embedder(y, self.training)  # (N, D)
+        y, labels = self.y_embedder(
+            y, self.training, dont_drop=dont_drop
+        )  # (N, D)
         c = t_embed + y                                # (N, D)
 
         for i, block in enumerate(self.blocks):
