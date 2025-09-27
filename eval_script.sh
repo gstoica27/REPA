@@ -32,7 +32,7 @@ do
             --num-fid-samples 50000 \
             --ckpt "${LOAD_EXP_LOC}/checkpoints/${fname}" \
             --path-type=linear \
-            --encoder-depth=8 \
+            --encoder-depth=4 \
             --projector-embed-dims=768 \
             --per-proc-batch-size=64 \
             --mode=sde \
