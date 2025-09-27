@@ -159,6 +159,18 @@ def create_experiment_name(args):
         # denoising_name = 'cctripmse'
     elif args.denoising_type == 'triplet_same_noise':
         denoising_name = 'tripsame'
+    elif args.denoising_type == "cbc":
+        contrastive_sampling_type = {
+            "random": "Rand",
+            "similarity": "Sim",
+            "dissimilarity": "Dissim",
+            "na": ""
+        }[args.contrastive_sampling_type]
+
+        denoising_name = "CB{}{}".format(
+            args.contrastive_on_condition.capitalize(),
+            contrastive_sampling_type
+        )
     else:
         raise NotImplementedError()
     
@@ -239,6 +251,19 @@ def main(args, exp_name):
         [0., 0., 0., 0.]
         ).view(1, 4, 1, 1).to(device)
 
+    # Setup data:
+    # train_dataset = MSCOCO256Features(encoding_root=args.data_dir, image_root=args.image_dir).train
+    train_dataset = CC3MFeatures(path=args.data_dir).train
+    local_batch_size = int(args.batch_size // accelerator.num_processes)
+    train_dataloader = DataLoader(
+        train_dataset,
+        batch_size=local_batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        drop_last=True
+    )
+
     # create loss function
     print("args.denoising_type", args.denoising_type)
     if args.denoising_type == 'mean':
@@ -268,7 +293,22 @@ def main(args, exp_name):
             dont_contrast_on_unconditional=args.dont_contrast_on_unconditional,
             is_class_conditioned=args.is_class_conditioned
         )
-        
+    elif args.denoising_type == "cbc":
+        # pdb.set_trace()
+        from contrast_by_condition_loss_t2i import ContrastByCondition
+        loss_fn = ContrastByCondition(
+            prediction=args.prediction,
+            path_type=args.path_type, 
+            encoders=encoders,
+            accelerator=accelerator,
+            latents_scale=latents_scale,
+            latents_bias=latents_bias,
+            weighting=args.weighting,
+            contrastive_weight=args.denoising_temp,
+            null_class_idx=args.num_classes,
+            condition_on=args.contrastive_on_condition,
+            contrastive_sampling_type=args.contrastive_sampling_type
+        )    
     else:
         print("args.denoising_type", args.denoising_type)
         # Raise NotImplementedError("Denoising type not implemented")
@@ -289,18 +329,6 @@ def main(args, exp_name):
         eps=args.adam_epsilon,
     )    
     
-    # Setup data:
-    # train_dataset = MSCOCO256Features(encoding_root=args.data_dir, image_root=args.image_dir).train
-    train_dataset = CC3MFeatures(path=args.data_dir).train
-    local_batch_size = int(args.batch_size // accelerator.num_processes)
-    train_dataloader = DataLoader(
-        train_dataset,
-        batch_size=local_batch_size,
-        shuffle=True,
-        num_workers=args.num_workers,
-        pin_memory=True,
-        drop_last=True
-    )
     if accelerator.is_main_process:
         logger.info(f"Dataset contains {len(train_dataset):,} images ({args.data_dir})")
     
@@ -348,6 +376,7 @@ def main(args, exp_name):
     sample_batch_size = args.batch_size // accelerator.num_processes
     _, gt_xs, _, gt_captions = next(iter(train_dataloader))
     # all_gt_captions = accelerator.gather(gt_captions)
+    null_token = torch.from_numpy(train_dataset.empty_token).unsqueeze(0)
 
     for i, caption in enumerate(gt_captions):
         index = i * accelerator.num_processes + accelerator.local_process_index
@@ -387,7 +416,9 @@ def main(args, exp_name):
 
             with accelerator.accumulate(model):
                 model_kwargs = dict(context=context)
-                loss_dict, proj_loss = loss_fn(model, x, model_kwargs, zs=zs)
+                loss_dict, proj_loss = loss_fn(
+                    model, x, model_kwargs, zs=zs, null_token=null_token.to(device)
+                )
                 loss_mean = loss_dict["loss"].mean()
                 proj_loss_mean = proj_loss.mean()
                 loss = loss_mean + proj_loss_mean * args.proj_coeff
@@ -454,7 +485,7 @@ def main(args, exp_name):
             }
             if 'contrastive_loss' in loss_dict:
                 logs["flow_loss"] = accelerator.gather(loss_dict["flow_loss"]).mean().detach().item()
-                logs["contrastive_loss"] = accelerator.gather(loss_dict["contrastive_loss"]).mean().detach().item()
+                # logs["contrastive_loss"] = accelerator.gather(loss_dict["contrastive_loss"]).mean().detach().item()
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
 
@@ -544,6 +575,15 @@ def parse_args(input_args=None):
     parser.add_argument("--is-class-conditioned", action=argparse.BooleanOptionalAction, default=False, 
                         help="If True, apply class conditioning for triplet loss (only for triplet loss). ")
     parser.add_argument("--num-classes", type=int, default=None, help="Number of classes for class conditioning.")
+    parser.add_argument(
+        "--contrastive-on-condition", type=str, default="class", choices=["context", "null"], 
+        help="Condition to use for contrastive loss (only for contrast by condition)."
+    )
+    parser.add_argument(
+        "--contrastive-sampling-type", type=str, default="random", 
+        choices=["random", "similarity", "dissimilarity", "na"], 
+        help="Sampling strategy for selecting negative samples (only for contrast by condition)."
+    )
 
     if input_args is not None:
         args = parser.parse_args(input_args)

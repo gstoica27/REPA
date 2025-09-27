@@ -597,7 +597,10 @@ def parse_args(input_args=None):
                         help="If True, apply class conditioning for triplet loss (only for triplet loss). ")
     parser.add_argument('--and-weigh-on-time', action=argparse.BooleanOptionalAction, default=False,
                         help="If True, apply time weighting for triplet loss (only for triplet loss).")
-    parser.add_argument("--contrastive-on-condition", type=str, default="class", choices=["class", "null"], help="Condition to use for contrastive loss (only for contrast by condition).")
+    parser.add_argument(
+        "--contrastive-on-condition", type=str, default="class", choices=["class", "null"], 
+        help="Condition to use for contrastive loss (only for contrast by condition)."
+    )
     
     if input_args is not None:
         args = parser.parse_args(input_args)
