@@ -1,10 +1,11 @@
 #!/bin/bash
-# MODEL_NAME="SiT-B/2"
-MODEL_NAME="SiT-XL/2"
-MODEL_ITERS="repaLinear-0p5-sitxl2-dinov2VitB-enc8-bs256-tripxtTemp0p05-res256"
+MODEL_NAME="SiT-B/2"
+# MODEL_NAME="SiT-XL/2"
+MODEL_ITERS="repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256-cbcTemp0p25-res256"
 CHECKPOINT_ITERS="0400000.pt"
-SAVE_DIR="/weka/oe-training-default/georges/samples/xt_conditioned/fid_50k"
-EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/"
+SAVE_DIR="/weka/oe-training-default/georges/samples/contrast_by_class/fid_50k"
+# EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/"
+EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/contrast_by_class2"
 
 for exp_name in $MODEL_ITERS
 do 
@@ -24,7 +25,7 @@ do
         do
             torchrun \
             --nnodes=1 \
-            --nproc_per_node=8 \
+            --nproc_per_node=4 \
             --master-port 29501 \
             generate.py \
             --model "${MODEL_NAME}" \
