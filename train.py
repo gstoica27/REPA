@@ -165,7 +165,7 @@ def create_experiment_name(args):
     elif args.denoising_type == 'triplet_xt':
         denoising_name = 'tripxt'
     elif args.denoising_type == "cbc":
-        denoising_name = "cbc"
+        denoising_name = "cbc{}".format(args.contrastive_on_condition.capitalize())
     else:
         raise NotImplementedError()
     
@@ -294,8 +294,8 @@ def main(args, exp_name):
             weigh_on_time=args.and_weigh_on_time,
         )
     elif args.denoising_type == "cbc":
-        from contrast_by_class import ContrastByClass
-        loss_fn = ContrastByClass(
+        from contrast_by_condition_loss import ContrastByCondition
+        loss_fn = ContrastByCondition(
             prediction=args.prediction,
             path_type=args.path_type, 
             encoders=encoders,
@@ -305,6 +305,7 @@ def main(args, exp_name):
             weighting=args.weighting,
             contrastive_weight=args.denoising_temp,
             null_class_idx=args.num_classes,
+            condition_on=args.contrastive_on_condition,
         )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -596,6 +597,7 @@ def parse_args(input_args=None):
                         help="If True, apply class conditioning for triplet loss (only for triplet loss). ")
     parser.add_argument('--and-weigh-on-time', action=argparse.BooleanOptionalAction, default=False,
                         help="If True, apply time weighting for triplet loss (only for triplet loss).")
+    parser.add_argument("--contrastive-on-condition", type=str, default="class", choices=["class", "null"], help="Condition to use for contrastive loss (only for contrast by condition).")
     
     if input_args is not None:
         args = parser.parse_args(input_args)

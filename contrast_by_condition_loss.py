@@ -27,26 +27,6 @@ def mse_flat(x, y, temperature=1, **kwargs):
     return mean_flat(err)
 
 
-def class_conditioned_sampling(labels):
-    bsz = labels.shape[0]
-    mask = ~(labels[None] == labels[:, None])
-    # choices[mask] = -1 # remove self-sampling
-    # Now randomly sample from the remaining choices
-    weights = mask.float()
-    weights_sum = weights.sum(dim=1, keepdim=True)
-    if (weights_sum == 0).any():
-        # In case there are no valid choices, fallback to uniform sampling
-        choices = torch.randint(0, bsz, (bsz,), device=labels.device)
-        # weights = torch.ones_like(choices).float()
-    else:
-        # Normalize weights to avoid division by zero
-        weights = weights / weights_sum.clamp(min=1)
-        # Sample from the available choices based on weights
-        choices = torch.multinomial(weights, 1).squeeze(1)
-    # Ensure no self-sampling
-    assert (choices != torch.arange(bsz, device=labels.device)).all(), "Self-sampling detected in class_conditioned_sampling"
-    return choices
-
 def sample_other_classes(labels):
     bsz = labels.shape[0]
     num_classes = labels.max() + 1
@@ -59,7 +39,7 @@ def sample_other_classes(labels):
     return random_labels
 
 
-class ContrastByClass:
+class ContrastByCondition:
     def __init__(
             self,
             prediction='v',
@@ -71,8 +51,7 @@ class ContrastByClass:
             latents_bias=None,
             contrastive_weight=1.0,
             null_class_idx=None,
-            dont_contrast_on_unconditional=False,
-            is_class_conditioned=False,
+            condition_on: str = "class",
             ):
         self.prediction = prediction
         self.weighting = weighting
@@ -82,10 +61,10 @@ class ContrastByClass:
         self.latents_scale = latents_scale
         self.latents_bias = latents_bias
         self.null_class_idx = null_class_idx
-        self.dont_contrast_on_unconditional = dont_contrast_on_unconditional
-        self.is_class_conditioned = is_class_conditioned
-        if self.dont_contrast_on_unconditional:
-            assert self.null_class_idx is not None, "Null class index must be provided"
+        self.condition_on = condition_on
+        print(f"Conditioning contrastive loss on: {self.condition_on}")
+        if self.condition_on == "null" and self.null_class_idx is None:
+            raise ValueError("null_class_idx must be specified when conditioning on null.")
             
         self.temperature = contrastive_weight
         print(f"Using temperature of: {self.temperature}")
@@ -131,9 +110,15 @@ class ContrastByClass:
         model_output, zs_tilde, labels = model(model_input, time_input.flatten(), **model_kwargs)
         positive_loss = mean_flat((model_output - model_target) ** 2)
         # pdb.set_trace()
-        negative_labels = sample_other_classes(labels)
+        if self.condition_on == "class":
+            negative_labels = sample_other_classes(labels)
+        elif self.condition_on == "null":
+            negative_labels = torch.full_like(labels, self.null_class_idx)
+        else:
+            raise NotImplementedError("Conditioning on {} not implemented".format(self.condition_on))
+        
         model_kwargs['y'] = negative_labels
-        # # pdb.set_trace()
+        # pdb.set_trace()
         with torch.no_grad():
             neg_output = model(model_input, time_input.flatten(), dont_drop=True, **model_kwargs)[0].detach()
         #     neg_output = 1.0
