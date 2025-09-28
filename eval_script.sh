@@ -1,7 +1,7 @@
 #!/bin/bash
 MODEL_NAME="SiT-B/2"
 # MODEL_NAME="SiT-XL/2"
-MODEL_ITERS="repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256-cbcTemp0p25-res256"
+MODEL_ITERS="repaLinear-0p5-sitb2-dinov2VitB-enc4-bs256-cbcTemp0p1-res256"
 CHECKPOINT_ITERS="0400000.pt"
 SAVE_DIR="/weka/oe-training-default/georges/samples/contrast_by_class/fid_50k"
 # EXP_LOC="/weka/oe-training-default/georges/checkpoints/REPA/exps/"
@@ -20,7 +20,7 @@ done
 for exp_name in $MODEL_ITERS
 do
     LOAD_EXP_LOC="${EXP_LOC}/${exp_name}"
-    EXP_SAVE_DIR="${SAVE_DIR}/50_steps/${exp_name}"
+    EXP_SAVE_DIR="${SAVE_DIR}/250_steps/${exp_name}"
     for fname in $CHECKPOINT_ITERS
         do
             torchrun \
@@ -36,7 +36,7 @@ do
             --projector-embed-dims=768 \
             --per-proc-batch-size=64 \
             --mode=sde \
-            --num-steps=50 \
+            --num-steps=250 \
             --cfg-scale=1.0 \
             --guidance-high=0.0 \
             --sample-dir "${EXP_SAVE_DIR}"

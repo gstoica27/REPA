@@ -49,7 +49,7 @@ class SILoss:
 
         return alpha_t, sigma_t, d_alpha_t, d_sigma_t
 
-    def __call__(self, model, images, model_kwargs=None, zs=None):
+    def __call__(self, model, images, model_kwargs=None, zs=None, null_token=None):
         if model_kwargs == None:
             model_kwargs = {}
         # sample timesteps

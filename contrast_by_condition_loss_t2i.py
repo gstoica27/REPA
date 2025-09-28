@@ -157,7 +157,7 @@ class ContrastByCondition:
         model_kwargs['context'] = negative_context
         # pdb.set_trace()
         with torch.no_grad():
-            neg_output = model(model_input, time_input.flatten(), **model_kwargs)[0].detach()
+            neg_output = model(model_input, time_input.flatten(), **model_kwargs)[0]#.detach()
         #     neg_output = 1.0
         elementwise_neg_loss = (model_output - neg_output) ** 2
         if null_token is not None:

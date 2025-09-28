@@ -397,9 +397,9 @@ def main(args, exp_name):
         # for raw_image, x, context in train_dataloader:
             if global_step == 0:
                 ys = context[:sample_batch_size].to(device) # handed-coded
-            raw_image = raw_image.to(device)
-            x = x.squeeze(dim=1).to(device)
-            context = context.to(device)
+            raw_image = raw_image.to(device, non_blocking=True)
+            x = x.squeeze(dim=1).to(device, non_blocking=True)
+            context = context.to(device, non_blocking=True)
             z = None
             with torch.no_grad():
                 x = sample_posterior(x, latents_scale=latents_scale, latents_bias=latents_bias)
