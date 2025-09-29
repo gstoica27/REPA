@@ -52,6 +52,7 @@ class ContrastByCondition:
             contrastive_weight=1.0,
             null_class_idx=None,
             condition_on: str = "class",
+            detached_component: str = "contraster",
             ):
         self.prediction = prediction
         self.weighting = weighting
@@ -62,9 +63,11 @@ class ContrastByCondition:
         self.latents_bias = latents_bias
         self.null_class_idx = null_class_idx
         self.condition_on = condition_on
+        self.detached_component = detached_component
         print(f"Conditioning contrastive loss on: {self.condition_on}")
         if self.condition_on == "null" and self.null_class_idx is None:
             raise ValueError("null_class_idx must be specified when conditioning on null.")
+        print(f"Detached component: {self.detached_component}")
             
         self.temperature = contrastive_weight
         print(f"Using temperature of: {self.temperature}")
@@ -119,10 +122,18 @@ class ContrastByCondition:
         
         model_kwargs['y'] = negative_labels
         # pdb.set_trace()
-        with torch.no_grad():
-            neg_output = model(model_input, time_input.flatten(), dont_drop=True, **model_kwargs)[0].detach()
+        if self.detached_component == "contraster":
+            with torch.no_grad():
+                neg_output = model(model_input, time_input.flatten(), dont_drop=True, **model_kwargs)[0]
+            model_output_ = model_output
+        elif self.detached_component == "contrasted":
+            neg_output = model(model_input, time_input.flatten(), dont_drop=True, **model_kwargs)[0]
+            model_output_ = model_output.detach()
+        else:
+            raise NotImplementedError("Detached component {} not implemented".format(self.detached_component))
+            
         #     neg_output = 1.0
-        elementwise_neg_loss = (model_output - neg_output) ** 2
+        elementwise_neg_loss = (model_output_ - neg_output) ** 2
         if self.null_class_idx is not None:
             elementwise_neg_loss = elementwise_neg_loss[labels != self.null_class_idx]
         negative_loss = mean_flat(elementwise_neg_loss)

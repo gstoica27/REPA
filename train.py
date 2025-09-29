@@ -165,7 +165,8 @@ def create_experiment_name(args):
     elif args.denoising_type == 'triplet_xt':
         denoising_name = 'tripxt'
     elif args.denoising_type == "cbc":
-        denoising_name = "cbc{}".format(args.contrastive_on_condition.capitalize())
+        contrasted_component = args.contrastive_detached_component.capitalize()[:5] + args.contrastive_detached_component[-2:]
+        denoising_name = "cbc{}{}".format(args.contrastive_on_condition.capitalize(), contrasted_component)
     else:
         raise NotImplementedError()
     
@@ -306,6 +307,7 @@ def main(args, exp_name):
             contrastive_weight=args.denoising_temp,
             null_class_idx=args.num_classes,
             condition_on=args.contrastive_on_condition,
+            detached_component=args.contrastive_detached_component,
         )
     if accelerator.is_main_process:
         logger.info(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -600,6 +602,9 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--contrastive-on-condition", type=str, default="class", choices=["class", "null"], 
         help="Condition to use for contrastive loss (only for contrast by condition)."
+    )
+    parser.add_argument(
+        "--contrastive-detached-component", type=str, default="contraster", choices=["contraster", "contrasted"],
     )
     
     if input_args is not None:
