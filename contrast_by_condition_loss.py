@@ -133,6 +133,7 @@ class ContrastByCondition:
             raise NotImplementedError("Detached component {} not implemented".format(self.detached_component))
             
         #     neg_output = 1.0
+        
         elementwise_neg_loss = (model_output_ - neg_output) ** 2
         if self.null_class_idx is not None:
             elementwise_neg_loss = elementwise_neg_loss[labels != self.null_class_idx]
