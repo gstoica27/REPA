@@ -143,7 +143,6 @@ class ContrastByCondition:
             total_loss = positive_loss.mean() - self.temperature * negative_loss.mean()
         
         else:
-            pdb.set_trace()
             neg_output = model(model_input, time_input.flatten(), dont_drop=True, **model_kwargs)[0]
             altered_target = model_target * (1 + self.temperature) - self.temperature * neg_output
             loss = (model_output - altered_target) ** 2
