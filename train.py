@@ -165,7 +165,10 @@ def create_experiment_name(args):
     elif args.denoising_type == 'triplet_xt':
         denoising_name = 'tripxt'
     elif args.denoising_type == "cbc":
-        contrasted_component = args.contrastive_detached_component.capitalize()[:5] + args.contrastive_detached_component[-2:]
+        if len(args.contrastive_detached_component) > 6:
+            contrasted_component = args.contrastive_detached_component.capitalize()[:5] + args.contrastive_detached_component[-2:]
+        else:
+            contrasted_component = args.contrastive_detached_component.capitalize()
         denoising_name = "cbc{}{}".format(args.contrastive_on_condition.capitalize(), contrasted_component)
     else:
         raise NotImplementedError()
@@ -604,7 +607,7 @@ def parse_args(input_args=None):
         help="Condition to use for contrastive loss (only for contrast by condition)."
     )
     parser.add_argument(
-        "--contrastive-detached-component", type=str, default="contraster", choices=["contraster", "contrasted"],
+        "--contrastive-detached-component", type=str, default="contraster", choices=["contraster", "contrasted", "none"],
     )
     
     if input_args is not None:

@@ -97,6 +97,7 @@ def main(args):
     # pdb.set_trace()
     state_dict = torch.load(ckpt_path, map_location="cpu", weights_only=False)[args.checkpoint_key]
     model.load_state_dict(state_dict)
+    print("Loaded checkpoint from", ckpt_path)
     model.eval()  # important!
     vae = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
     assert args.cfg_scale >= 1.0, "In almost all cases, cfg_scale be >= 1.0"
@@ -126,7 +127,9 @@ def main(args):
     # To make things evenly-divisible, we'll sample a bit more than we need and then discard the extra samples:
     # total_samples = 40192
     # total_samples = args.num_fid_samples
-    total_samples = int(math.ceil(args.num_fid_samples / global_batch_size) * global_batch_size)
+    requested_total_samples = int(math.ceil(args.num_fid_samples / global_batch_size) * global_batch_size)
+    dataset_total_samples = int(math.ceil(len(val_dataloader.dataset) / global_batch_size) * global_batch_size)
+    total_samples = min(requested_total_samples, dataset_total_samples)
     if accelerator.is_main_process:
         print(f"Total number of images that will be sampled: {total_samples}")
         print(f"SiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -205,12 +208,12 @@ def main(args):
 
     # Make sure all processes have finished saving their samples before attempting to convert to .npz
     dist.barrier()
-    # if accelerator.is_main_process:
-    #     # create_npz_from_sample_folder(sample_folder_dir, 40192)
-    #     create_npz_from_sample_folder(sample_folder_dir, args.num_fid_samples)
-    #     # create_npz_from_sample_folder(real_sample_folder_dir, 40192)
-    #     print("Done.")
-    # dist.barrier()
+    if accelerator.is_main_process:
+        # create_npz_from_sample_folder(sample_folder_dir, 40192)
+        create_npz_from_sample_folder(sample_folder_dir, total_samples)
+        # create_npz_from_sample_folder(real_sample_folder_dir, 40192)
+        print("Done.")
+    dist.barrier()
     dist.destroy_process_group()
 
 if __name__ == "__main__":
