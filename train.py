@@ -34,6 +34,9 @@ from torchvision.transforms import Normalize
 
 logger = get_logger(__name__)
 
+# import os
+# os.environ["WANDB_MODE"]="offline"
+
 with open('/weka/prior-default/georges/keys/wandb.txt', 'r') as f:
     wandb_key = f.readlines()[0].strip()
 wandb.login(key=wandb_key) # login to wandb
@@ -170,6 +173,12 @@ def create_experiment_name(args):
         else:
             contrasted_component = args.contrastive_detached_component.capitalize()
         denoising_name = "cbc{}{}".format(args.contrastive_on_condition.capitalize(), contrasted_component)
+    elif args.denoising_type == "jcbc":
+        if len(args.contrastive_detached_component) > 6:
+            contrasted_component = args.contrastive_detached_component.capitalize()[:5] + args.contrastive_detached_component[-2:]
+        else:
+            contrasted_component = args.contrastive_detached_component.capitalize()
+        denoising_name = "jcbc{}{}".format(args.contrastive_on_condition.capitalize(), contrasted_component)
     else:
         raise NotImplementedError()
     
@@ -297,7 +306,7 @@ def main(args, exp_name):
             is_class_conditioned=args.is_class_conditioned,
             weigh_on_time=args.and_weigh_on_time,
         )
-    elif args.denoising_type == "cbc":
+    elif args.denoising_type in ["cbc", "jcbc"]:
         from contrast_by_condition_loss import ContrastByCondition
         loss_fn = ContrastByCondition(
             prediction=args.prediction,

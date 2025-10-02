@@ -122,33 +122,29 @@ class ContrastByCondition:
         
         model_kwargs['y'] = negative_labels
         # pdb.set_trace()
-        if self.detached_component != "none":
-            if self.detached_component == "contraster":
-                with torch.no_grad():
-                    neg_output = model(model_input, time_input.flatten(), dont_drop=True, **model_kwargs)[0]
-                model_output_ = model_output
-            elif self.detached_component == "contrasted":
+        if self.detached_component == "contraster":
+            with torch.no_grad():
                 neg_output = model(model_input, time_input.flatten(), dont_drop=True, **model_kwargs)[0]
-                model_output_ = model_output.detach()
-            else:
-                raise NotImplementedError("Detached component {} not implemented".format(self.detached_component))
-                
-            #     neg_output = 1.0
-            
-            elementwise_neg_loss = (model_output_ - neg_output) ** 2
-            if self.null_class_idx is not None:
-                elementwise_neg_loss = elementwise_neg_loss[labels != self.null_class_idx]
-            negative_loss = mean_flat(elementwise_neg_loss)
-            # pdb.set_trace()
-            total_loss = positive_loss.mean() - self.temperature * negative_loss.mean()
-        
-        else:
+        elif self.detached_component == "none":
             neg_output = model(model_input, time_input.flatten(), dont_drop=True, **model_kwargs)[0]
-            altered_target = model_target * (1 + self.temperature) - self.temperature * neg_output
-            loss = (model_output - altered_target) ** 2
+        else:
+            raise NotImplementedError("Detached component {} not implemented".format(self.detached_component))
+            
+        #     neg_output = 1.0
+        altered_target = model_target * (1 + self.temperature) - self.temperature * neg_output
+        loss = (model_output - altered_target) ** 2
+        if self.null_class_idx is not None:
             loss[labels == self.null_class_idx] = ((model_output - model_target) ** 2)[labels == self.null_class_idx]
-            total_loss = mean_flat(loss)
-            negative_loss = torch.tensor(0.0, device=total_loss.device)
+        total_loss = mean_flat(loss)
+        negative_loss = torch.tensor(0.0, device=total_loss.device)
+        # elementwise_neg_loss = (model_output_ - neg_output) ** 2
+        # if self.null_class_idx is not None:
+        #     elementwise_neg_loss = elementwise_neg_loss[labels != self.null_class_idx]
+        # negative_loss = mean_flat(elementwise_neg_loss)
+        # # pdb.set_trace()
+        # total_loss = positive_loss.mean() - self.temperature * negative_loss.mean()
+        
+            
 
 
         denoising_loss = {
